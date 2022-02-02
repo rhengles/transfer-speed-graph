@@ -1,1 +1,63 @@
-<script src="index.js"></script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Document</title>
+	<link rel="stylesheet" href="index.css" />
+</head>
+<body>
+	<div class="controls"></div>
+	<table>
+		<thead>
+			<tr>
+				<th>
+					index
+				</th>
+				<th>
+					ellapsed
+				</th>
+				<th>
+					progress
+				</th>
+				<th>
+					avg total
+				</th>
+				<th>
+					avg 1min
+				</th>
+				<th>
+					avg 15s
+				</th>
+				<th>
+					avg 5s
+				</th>
+				<th>
+					avg 1s
+				</th>
+			</tr>
+		</thead>
+		<tbody>
+		</tbody>
+	</table>
+	<div class="ctrpanel">
+		<div class="slider-wrap slider-1">
+			<div class="slider-track">
+				<div class="slider-actual-track">
+					<div class="slider-bt slider-bt-min" style="left: 0;">
+						<div class="slider-bt-handle">min</div>
+					</div>
+					<div class="slider-bt slider-bt-max" style="left: 0;">
+						<div class="slider-bt-handle">max</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<script src="lib.js"></script>
+	<script src="graph.js"></script>
+	<script src="index.js"></script>
+	<script src="module.js" type="module"></script>
+</body>
+</html>

@@ -1,6 +1,14 @@
 {
-  "name": "js",
+  "name": "transfer-speed",
   "version": "0.0.0",
-  "private": true,
-  "dependencies": {}
+  "description": "-",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "rhengles@gmail.com",
+  "license": "MIT",
+  "dependencies": {
+    "@arijs/frontend": "file:../front-end"
+  }
 }
