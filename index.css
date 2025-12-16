@@ -35,9 +35,53 @@ html {
 	transform: translateY(-50%);
 	cursor: default;
 }
+.slider-bt-single .slider-bt-handle {
+	left: 0;
+	transform: translate(-50%, -50%);
+}
 .slider-bt-min .slider-bt-handle {
 	right: 0;
 }
 .slider-bt-max .slider-bt-handle {
 	left: 0;
+}
+.slider-vert-list {
+	display: flex;
+	flex-flow: row wrap;
+	justify-content: center;
+	min-height: 15em;
+	height: 80vh;
+	height: calc(100vh - 7em);
+}
+.slider-vert-list .slider-wrap {
+	padding: 3.5em 2em;
+	height: 100%;
+}
+.slider-vert-list .slider-track {
+	height: 100%;
+}
+.slider-vert-list .slider-actual-track {
+	width: 0;
+	height: 100%;
+}
+.slider-vert-list .slider-bt {
+	left: 0;
+}
+.slider-vert-list .slider-bt-handle {
+	left: 0;
+	transform: translateX(-50%);
+}
+.slider-vert-list .slider-bt-single .slider-bt-handle {
+	left: 0;
+	top: 0;
+	transform: translate(-50%, -50%);
+}
+.slider-vert-list .slider-bt-min .slider-bt-handle {
+	right: auto;
+	top: auto;
+	bottom: 0;
+}
+.slider-vert-list .slider-bt-max .slider-bt-handle {
+	left: 0;
+	top: 0;
 }

@@ -4,11 +4,16 @@
   "description": "-",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "snapshot": "node snapshot.js",
+    "simpler": "node simpler-test.js"
   },
   "author": "rhengles@gmail.com",
   "license": "MIT",
   "dependencies": {
     "@arijs/frontend": "file:../front-end"
+  },
+  "devDependencies": {
+    "canvas": "^3.2.0"
   }
 }

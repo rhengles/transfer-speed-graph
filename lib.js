@@ -41,3 +41,15 @@ function bytesSize(b) {
 	return [b, m[2]];
 }
 
+const libApi = {
+	cutNumberArray,
+	cutTimeDaysArray,
+	printTime,
+	bytesSize,
+};
+
+if (typeof module !== 'undefined' && module.exports) {
+	module.exports = libApi;
+} else {
+	Object.assign(window, libApi);
+}

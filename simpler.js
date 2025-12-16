@@ -4,7 +4,8 @@ function rand(min, max) {
 
 const numSort = (a, b) => a - b;
 
-function randSeries(minCount, maxCount, minTime, maxTime, minValue, maxValue) {
+function randSeries(config) {
+	const {minCount, maxCount, minTime, maxTime, minValue, maxValue} = config;
 	const count = rand(minCount, maxCount);
 	const times = [];
 	const values = [];
@@ -20,7 +21,7 @@ function randSeries(minCount, maxCount, minTime, maxTime, minValue, maxValue) {
 	}
 	series.unshift([minTime, minValue]);
 	series.push([maxTime, maxValue]);
-	return series;
+	return {config, series};
 }
 
 function getTimeOfSeriesItem(item) {
@@ -257,7 +258,7 @@ function calcSeriesAverage(
 		tPos = tNext;
 	}
 	const sum = ci(tSum, vSum);
-	return { avg, sum, holes };
+	return { avg, sum, holes, sLen, tMin, tMax };
 }
 
 function randSegment(
@@ -363,68 +364,36 @@ function printAverage(obj, gt, gv, printList = printSeries) {
 	};
 }
 
-const series = randSeries(15, 35, 0, 100, 0, 100);
-
-const segmentVT = randSegment(series, -50, 150, 10, 30);
-const segPrintVT = printSegment(segmentVT);
-
-console.log(`Amount over time:`);
-console.log(segPrintVT.meta);
-console.log(segPrintVT.segment);
-console.log(segPrintVT.cut);
-
-const segmentTV = randSegment(
-	series,
-	-50,
-	150,
-	10,
-	30,
-	getValueOfSeriesItem,
+const simplerApi = {
+	rand,
+	numSort,
+	randSeries,
 	getTimeOfSeriesItem,
-	createSeriesItemInverted
-);
-const segPrintTV = printSegment(segmentTV);
-
-console.log(`Time over amount:`);
-console.log(segPrintTV.meta);
-console.log(segPrintTV.segment);
-console.log(segPrintTV.cut);
-
-printSeries(series).forEach((s) => console.log(s));
-
-console.log(`Average over time:`);
-const avgVT = calcSeriesAverage(
-	series,
-	10,
-	10,
-	// undefined,
-	// undefined,
-	// undefined,
-	// csAvgGetFullInfoFromCut
-);
-const avgPrintVT = printAverage(
-	avgVT,
-	// undefined,
-	// undefined,
-	// printAvgFullInfoList
-);
-avgPrintVT.avg.forEach((s) => console.log(s));
-console.log(avgPrintVT.sum);
-avgPrintVT.holes.forEach((s) => console.log(s));
-
-console.log(`Average over size:`);
-const avgTV = calcSeriesAverage(
-	series,
-	10,
-	10,
 	getValueOfSeriesItem,
-	getTimeOfSeriesItem,
-	createSeriesItemInverted
-);
-const avgPrintTV = printAverage(avgTV);
-avgPrintTV.avg.forEach((s) => console.log(s));
-console.log(avgPrintTV.sum);
-avgPrintTV.holes.forEach((h, i) => {
-	console.log(`Hole ${i}`);
-	console.log(h);
-});
+	createSeriesItem,
+	createSeriesItemInverted,
+	reduceValueLesser,
+	reduceValueGreater,
+	getSegment,
+	calcItemBetween,
+	getSegmentCutAndSum,
+	getSegmentCutAndSumFromSeries,
+	csAvgGetSumFromCut,
+	csAvgGetFullInfoFromCut,
+	calcSeriesAverage,
+	randSegment,
+	printItem,
+	printSeries,
+	printCutSum,
+	printSegment,
+	printAvgFullInfo,
+	printAvgFullInfoList,
+	printAverageHole,
+	printAverage,
+};
+
+if (typeof module !== 'undefined' && module.exports) {
+	module.exports = simplerApi;
+} else if (typeof window !== 'undefined') {
+	Object.assign(window, simplerApi);
+}

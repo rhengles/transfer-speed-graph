@@ -1,4 +1,10 @@
 
+const libCtx = (typeof module !== 'undefined' && module.exports)
+	? require('./lib.js')
+	: (typeof window !== 'undefined' ? window : {})
+
+const bytesSize = libCtx.bytesSize
+
 const fnFallback = (fn, fallback) => fn instanceof Function ? fn : fallback
 const isNr = nr => 'number' === typeof nr && !isNaN(nr) && isFinite(nr)
 const optNrFn = (v, fallback, ...args) => isNr(v) ? v : fnFallback(v, fallback)(...args)
@@ -277,4 +283,17 @@ function createRenderManager(opt) {
 			avgAddFnList[i](getSpeedFromAvg(avg[i]))
 		}
 	}
+}
+
+const graphApi = {
+	createRenderGraph,
+	createRenderGraphAvg,
+	createRenderManager,
+	getSpeedFromAvg,
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+	module.exports = graphApi
+} else if (typeof window !== 'undefined') {
+	Object.assign(window, graphApi)
 }
