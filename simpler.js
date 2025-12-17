@@ -205,7 +205,14 @@ function csAvgGetFullInfoFromCut(cut, cutPrev) {
 	return { cut, cutPrev };
 }
 
-function calcSeriesSpeeds(series) {
+function calcSeriesTimeAccumulated(series) {
+	const seriesAccum = []
+	for (let i = 0, c = series.length; i < c; i++) {
+		// @TODO
+	}
+}
+
+function calcSeriesSpeedsAverageAccumulated(series) {
 	const seriesWithSpeeds = [
 		// [...series[0], 0],
 	]
@@ -217,6 +224,29 @@ function calcSeriesSpeeds(series) {
 		// const speed = dt ? dv / dt : 0
 		const speed = time ? value / time : 0
 		seriesWithSpeeds.push([time, value, speed])
+	}
+	return seriesWithSpeeds
+}
+
+const SERIES_TIME_UNIT = {
+	ACCUMULATED: 1,
+	INTERVAL: 2,
+}
+function calcSeriesSpeedsAtEachInterval(series, mode = SERIES_TIME_UNIT.ACCUMULATED) {
+	const seriesWithSpeeds = [
+		// [...series[0], 0],
+	]
+	for (let i = 0, c = series.length; i < c; i++) {
+		const [time0, value0] = series[i - 1] || [0, 0]
+		const [time1, value1] = series[i]
+		const dt = mode === SERIES_TIME_UNIT.ACCUMULATED
+			? time1
+			: time1 - time0
+		const dv = mode === SERIES_TIME_UNIT.ACCUMULATED
+			? value1
+			: value1 - value0
+		const speed = dt ? dv / dt : (dv ? +Infinity : 0)
+		seriesWithSpeeds.push([time1, value1, speed])
 	}
 	return seriesWithSpeeds
 }
@@ -277,7 +307,7 @@ function calcSeriesAverage(
 		}
 		tPos = tNext;
 	}
-	const avg = calcSeriesSpeeds(avgBase);
+	const avg = calcSeriesSpeedsAtEachInterval(avgBase);
 	const sum = ci(tSum, vSum);
 	return { avg, sum, holes, sLen, tMin, tMax };
 }
@@ -402,7 +432,8 @@ const simplerApi = {
 	getSegmentCutAndSumFromSeries,
 	csAvgGetSumFromCut,
 	csAvgGetFullInfoFromCut,
-	calcSeriesSpeeds,
+	calcSeriesSpeedsAverageAccumulated,
+	calcSeriesSpeedsAtEachInterval,
 	calcSeriesAverage,
 	randSegment,
 	printItem,
@@ -413,6 +444,7 @@ const simplerApi = {
 	printAvgFullInfoList,
 	printAverageHole,
 	printAverage,
+	SERIES_TIME_UNIT,
 };
 
 if (typeof module !== 'undefined' && module.exports) {

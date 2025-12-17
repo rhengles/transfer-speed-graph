@@ -10,7 +10,9 @@ const {
 	printSegment,
 	printSeries,
 	printAverage,
-	calcSeriesSpeeds,
+	// calcSeriesSpeedsAverageAccumulated,
+	calcSeriesSpeedsAtEachInterval,
+	SERIES_TIME_UNIT,
 } = require('./simpler.js')
 const { createCanvas } = require('canvas')
 
@@ -84,7 +86,7 @@ function renderStepToCanvas(config, stepList, canvasCtx, offsetY) {
 
 		// With this, we should get the resolution of 1px per datapoint
 		const avgResolution = lastValue / lastX
-		const avgWithSpeeds = calcSeriesSpeeds(
+		const avgWithSpeeds = calcSeriesSpeedsAtEachInterval(
 			calcSeriesAverage(
 				stepList,
 				avgResolution, // resolution,
@@ -92,7 +94,8 @@ function renderStepToCanvas(config, stepList, canvasCtx, offsetY) {
 				getValueOfSeriesItem,
 				getTimeOfSeriesItem,
 				createSeriesItemInverted,
-			).avg
+			).avg,
+			SERIES_TIME_UNIT.INTERVAL,
 		)
 		let hasZeroTime = false
 		const infiniteFactor = 2 // how much more space infinite speed (0 time) gets compared to max speed
@@ -136,10 +139,10 @@ function renderStepToCanvas(config, stepList, canvasCtx, offsetY) {
 function renderSnapshotToCanvas(snapshot) {
 	const canvas = createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT * snapshot.series.length)
 	const ctx = canvas.getContext('2d')
-	const seriesSpeeds = calcSeriesSpeeds(snapshot.series)
+	// const seriesSpeeds = calcSeriesSpeedsAtEachInterval(snapshot.series)
 	snapshot.series.forEach((_, index) => {
 		const offsetY = index * CANVAS_HEIGHT
-		const stepList = seriesSpeeds.slice(0, index + 1)
+		const stepList = snapshot.series.slice(0, index + 1)
 		renderStepToCanvas(
 			snapshot.seriesConfig,
 			stepList,
@@ -162,7 +165,7 @@ const snapshot = withSeededRandom(RNG_SEED, () => {
 		minValue: 0,
 		maxValue: 100,
 	})
-	const series = calcSeriesSpeeds(seriesBase)
+	const series = calcSeriesSpeedsAtEachInterval(seriesBase, SERIES_TIME_UNIT.ACCUMULATED)
 	data.seriesConfig = seriesConfig
 	data.series = series
 
