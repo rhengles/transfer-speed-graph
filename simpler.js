@@ -32,6 +32,10 @@ function getValueOfSeriesItem(item) {
 	return item[1];
 }
 
+function getSpeedOfSeriesItem(item) {
+	return item[2];
+}
+
 function createSeriesItem(time, value) {
 	return [time, value];
 }
@@ -201,6 +205,22 @@ function csAvgGetFullInfoFromCut(cut, cutPrev) {
 	return { cut, cutPrev };
 }
 
+function calcSeriesSpeeds(series) {
+	const seriesWithSpeeds = [
+		// [...series[0], 0],
+	]
+	for (let i = 0, c = series.length; i < c; i++) {
+		// const [time0, value0] = series[i - 1]
+		const [time, value] = series[i]
+		// const dt = time1 - time0
+		// const dv = Math.abs(value1 - value0)
+		// const speed = dt ? dv / dt : 0
+		const speed = time ? value / time : 0
+		seriesWithSpeeds.push([time, value, speed])
+	}
+	return seriesWithSpeeds
+}
+
 function calcSeriesAverage(
 	series,
 	resolution,
@@ -213,7 +233,7 @@ function calcSeriesAverage(
 	const sLen = series.length;
 	const tMin = gt(series[0]);
 	const tMax = gt(series[sLen - 1]);
-	const avg = [];
+	const avgBase = [];
 	const holes = [];
 	let currentHole = undefined;
 	let lastCut = undefined;
@@ -240,7 +260,7 @@ function calcSeriesAverage(
 				currentHole.end = cutBefore;
 				currentHole = undefined;
 			}
-			avg.push(getInfoFromCut(lastCut, prevCut));
+			avgBase.push(getInfoFromCut(lastCut, prevCut));
 			tSum += gt(sum);
 			vSum += gv(sum);
 		} else if (!currentHole) {
@@ -257,6 +277,7 @@ function calcSeriesAverage(
 		}
 		tPos = tNext;
 	}
+	const avg = calcSeriesSpeeds(avgBase);
 	const sum = ci(tSum, vSum);
 	return { avg, sum, holes, sLen, tMin, tMax };
 }
@@ -288,8 +309,9 @@ function randSegment(
 }
 
 function printItem(o, gt = getTimeOfSeriesItem, gv = getValueOfSeriesItem) {
+	const s = (o && 2 in o) ? ` s ${String(getSpeedOfSeriesItem(o)).padStart(3)}` : ''
 	return o
-		? `t ${String(gt(o)).padStart(3)} v ${String(gv(o)).padStart(3)}`
+		? `t ${String(gt(o)).padStart(3)} v ${String(gv(o)).padStart(3)}${s}`
 		: o;
 }
 
@@ -380,6 +402,7 @@ const simplerApi = {
 	getSegmentCutAndSumFromSeries,
 	csAvgGetSumFromCut,
 	csAvgGetFullInfoFromCut,
+	calcSeriesSpeeds,
 	calcSeriesAverage,
 	randSegment,
 	printItem,

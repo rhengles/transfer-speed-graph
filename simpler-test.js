@@ -10,6 +10,7 @@ const {
 	printSegment,
 	printSeries,
 	printAverage,
+	calcSeriesSpeeds,
 } = require('./simpler.js')
 const { createCanvas } = require('canvas')
 
@@ -38,30 +39,107 @@ function withSeededRandom(seed, fn) {
 	}
 }
 
+function getSnapshotAverage(label, series, resolution, averageValue, getValue, getTime, createItem) {
+	console.log(`Average over ${label}:`)
+	const avg = calcSeriesAverage(
+		series,
+		resolution, // 10,
+		averageValue, // 10,
+		getValue, // getValueOfSeriesItem,
+		getTime, // getTimeOfSeriesItem,
+		createItem, // createSeriesItemInverted,
+	)
+	const avgPrint = printAverage(avg)
+	avgPrint.avg.forEach((entry) => console.log(entry))
+	console.log('- Sum:', avgPrint.sum)
+	avgPrint.holes.forEach((hole, index) => {
+		console.log(`- Hole ${index}:`, hole)
+	})
+	return { avg, avgPrint }
+}
+
 function renderStepToCanvas(config, stepList, canvasCtx, offsetY) {
 	if (!stepList.length) return
 	const lastStep = stepList[stepList.length - 1]
-	const [, lastValue] = lastStep
-	const maxValue = config.maxValue
-	const lastX = lastValue / maxValue * (CANVAS_WIDTH - 1)
+	const [lastTime, lastValue] = lastStep
+	// const maxValue = config.maxValue
+	const lastX = lastValue / config.maxValue * (CANVAS_WIDTH - 1)
+
 	canvasCtx.save()
+
 	canvasCtx.translate(0, offsetY)
 	canvasCtx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
 	canvasCtx.fillStyle = '#00ff00'
 	canvasCtx.strokeStyle = '#00e000'
+	canvasCtx.lineWidth = 1
 	canvasCtx.beginPath()
 	canvasCtx.rect(0.5, 0.5, lastX, CANVAS_HEIGHT-1)
 	canvasCtx.fill()
 	canvasCtx.stroke()
+
+	if (lastX) {
+		const maxSpeed = stepList.reduce((max, [,,speed], index) => {
+			return Math.max(max, speed)
+		}, 0)
+
+		// With this, we should get the resolution of 1px per datapoint
+		const avgResolution = lastValue / lastX
+		const avgWithSpeeds = calcSeriesSpeeds(
+			calcSeriesAverage(
+				stepList,
+				avgResolution, // resolution,
+				avgResolution, // averageValue,
+				getValueOfSeriesItem,
+				getTimeOfSeriesItem,
+				createSeriesItemInverted,
+			).avg
+		)
+		let hasZeroTime = false
+		const infiniteFactor = 2 // how much more space infinite speed (0 time) gets compared to max speed
+		const maxAvgSpeedBase = avgWithSpeeds.reduce((max, [time,,speed]) => {
+			if (time === 0) {
+				hasZeroTime = true // that's infinite speed
+				return max
+			}
+			return Math.max(max, speed)
+		}, 0)
+		const maxAvgSpeed = maxAvgSpeedBase * (hasZeroTime ? infiniteFactor : 1)
+
+		canvasCtx.save()
+		canvasCtx.beginPath()
+		let x = 0.5
+		let y = CANVAS_HEIGHT - 0.5
+		canvasCtx.moveTo(x, y)
+		for (let i = 0, c = avgWithSpeeds.length; i < c; i++) {
+			const [time, value, speed] = avgWithSpeeds[i]
+			x += value // we expect value to be (1) here
+			const height = CANVAS_HEIGHT - 1
+			let speedRatio = speed / maxAvgSpeed
+			if (speedRatio > 1) speedRatio = 1
+			if (time === 0) speedRatio = 1
+			y = height - (height * speedRatio) + 0.5
+			canvasCtx.lineTo(x, y)
+		}
+		canvasCtx.lineTo(x, CANVAS_HEIGHT - 0.5)
+		canvasCtx.closePath()
+		canvasCtx.fillStyle = '#008000'
+		canvasCtx.fill()
+		// canvasCtx.strokeStyle = '#e00000'
+		// canvasCtx.stroke()
+		canvasCtx.restore()
+
+	}
+
 	canvasCtx.restore()
 }
 
 function renderSnapshotToCanvas(snapshot) {
 	const canvas = createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT * snapshot.series.length)
 	const ctx = canvas.getContext('2d')
+	const seriesSpeeds = calcSeriesSpeeds(snapshot.series)
 	snapshot.series.forEach((_, index) => {
 		const offsetY = index * CANVAS_HEIGHT
-		const stepList = snapshot.series.slice(0, index + 1)
+		const stepList = seriesSpeeds.slice(0, index + 1)
 		renderStepToCanvas(
 			snapshot.seriesConfig,
 			stepList,
@@ -76,7 +154,7 @@ const snapshot = withSeededRandom(RNG_SEED, () => {
 	const seedHex = `0x${RNG_SEED.toString(16).toUpperCase()}`
 	const data = { seed: seedHex }
 
-	const {config: seriesConfig, series} = randSeries({
+	const {config: seriesConfig, series: seriesBase} = randSeries({
 		minCount: 15,
 		maxCount: 35,
 		minTime: 0,
@@ -84,6 +162,7 @@ const snapshot = withSeededRandom(RNG_SEED, () => {
 		minValue: 0,
 		maxValue: 100,
 	})
+	const series = calcSeriesSpeeds(seriesBase)
 	data.seriesConfig = seriesConfig
 	data.series = series
 
@@ -123,59 +202,113 @@ const snapshot = withSeededRandom(RNG_SEED, () => {
 	seriesPrint.forEach((line) => console.log(line))
 	data.seriesPrint = seriesPrint
 
-	console.log('Average over time:')
-	const avgVT = calcSeriesAverage(series, 10, 10)
-	const avgPrintVT = printAverage(avgVT)
-	avgPrintVT.avg.forEach((entry) => console.log(entry))
-	console.log(avgPrintVT.sum)
-	avgPrintVT.holes.forEach((hole) => console.log(hole))
-	data.averageOverTime = avgPrintVT
+	data.averageOverTime_10_10 = getSnapshotAverage(
+		'time',
+		series,
+		10,
+		10,
+	).avgPrint
 
-	console.log('Average over size:')
-	const avgTV = calcSeriesAverage(
+	// console.log('Average over time:')
+	// const avgVT = calcSeriesAverage(series, 10, 10)
+	// const avgPrintVT = printAverage(avgVT)
+	// avgPrintVT.avg.forEach((entry) => console.log(entry))
+	// console.log(avgPrintVT.sum)
+	// avgPrintVT.holes.forEach((hole, index) => {
+	// 	console.log(`Hole ${index}:`, hole)
+	// })
+	// data.averageOverTime = avgPrintVT
+
+	data.averageOverSize_10_10 = getSnapshotAverage(
+		'size',
 		series,
 		10,
 		10,
 		getValueOfSeriesItem,
 		getTimeOfSeriesItem,
 		createSeriesItemInverted,
-	)
-	const avgPrintTV = printAverage(avgTV)
-	avgPrintTV.avg.forEach((entry) => console.log(entry))
-	console.log(avgPrintTV.sum)
-	avgPrintTV.holes.forEach((hole, index) => {
-		console.log(`Hole ${index}`)
-		console.log(hole)
-	})
-	data.averageOverSize = avgPrintTV
+	).avgPrint
+
+	// console.log('Average over size:')
+	// const avgTV = calcSeriesAverage(
+	// 	series,
+	// 	10,
+	// 	10,
+	// 	getValueOfSeriesItem,
+	// 	getTimeOfSeriesItem,
+	// 	createSeriesItemInverted,
+	// )
+	// const avgPrintTV = printAverage(avgTV)
+	// avgPrintTV.avg.forEach((entry) => console.log(entry))
+	// console.log(avgPrintTV.sum)
+	// avgPrintTV.holes.forEach((hole, index) => {
+	// 	console.log(`Hole ${index}:`, hole)
+	// })
+	// data.averageOverSize = avgPrintTV
 
 	// ****************
 
-	console.log('Average over time [50]:')
-	const avgVT50 = calcSeriesAverage(series, 50, 50)
-	const avgPrintVT50 = printAverage(avgVT50)
-	avgPrintVT50.avg.forEach((entry) => console.log(entry))
-	console.log(avgPrintVT50.sum)
-	avgPrintVT50.holes.forEach((hole) => console.log(hole))
-	data.averageOverTime50 = avgPrintVT50
+	data.averageOverTime_50_50 = getSnapshotAverage(
+		'time [50/50]',
+		series,
+		50,
+		50,
+	).avgPrint
 
-	console.log('Average over size [50]:')
-	const avgTV50 = calcSeriesAverage(
+	// console.log('Average over time [50]:')
+	// const avgVT50 = calcSeriesAverage(series, 50, 50)
+	// const avgPrintVT50 = printAverage(avgVT50)
+	// avgPrintVT50.avg.forEach((entry) => console.log(entry))
+	// console.log(avgPrintVT50.sum)
+	// avgPrintVT50.holes.forEach((hole) => console.log(hole))
+	// data.averageOverTime50 = avgPrintVT50
+
+	data.averageOverSize_50_50 = getSnapshotAverage(
+		'size [50/50]',
 		series,
 		50,
 		50,
 		getValueOfSeriesItem,
 		getTimeOfSeriesItem,
 		createSeriesItemInverted,
-	)
-	const avgPrintTV50 = printAverage(avgTV50)
-	avgPrintTV50.avg.forEach((entry) => console.log(entry))
-	console.log(avgPrintTV50.sum)
-	avgPrintTV50.holes.forEach((hole, index) => {
-		console.log(`Hole ${index}`)
-		console.log(hole)
-	})
-	data.averageOverSize50 = avgPrintTV50
+	).avgPrint
+
+	// console.log('Average over size [50]:')
+	// const avgTV50 = calcSeriesAverage(
+	// 	series,
+	// 	50,
+	// 	50,
+	// 	getValueOfSeriesItem,
+	// 	getTimeOfSeriesItem,
+	// 	createSeriesItemInverted,
+	// )
+	// const avgPrintTV50 = printAverage(avgTV50)
+	// avgPrintTV50.avg.forEach((entry) => console.log(entry))
+	// console.log(avgPrintTV50.sum)
+	// avgPrintTV50.holes.forEach((hole, index) => {
+	// 	console.log(`Hole ${index}`)
+	// 	console.log(hole)
+	// })
+	// data.averageOverSize50 = avgPrintTV50
+
+	// ****************
+
+	data.averageOverTime_2_2 = getSnapshotAverage(
+		'time [2/2]',
+		series,
+		2,
+		2,
+	).avgPrint
+
+	data.averageOverSize_2_2 = getSnapshotAverage(
+		'size [2/2]',
+		series,
+		2,
+		2,
+		getValueOfSeriesItem,
+		getTimeOfSeriesItem,
+		createSeriesItemInverted,
+	).avgPrint
 
 	return data
 })
