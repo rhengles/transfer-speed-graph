@@ -61,7 +61,7 @@ function getSnapshotAverage(label, series, resolution, averageValue, getValue, g
 	return { avg, avgPrint }
 }
 
-function renderStepToCanvas(config, stepList, canvasCtx, offsetY) {
+function renderStepToCanvas(config, stepList, canvasCtx, offsetY, globalMaxSpeed) {
 	if (!stepList.length) return
 	const lastStep = stepList[stepList.length - 1]
 	const [lastTime, lastValue] = lastStep
@@ -81,10 +81,7 @@ function renderStepToCanvas(config, stepList, canvasCtx, offsetY) {
 	canvasCtx.stroke()
 
 	if (lastX) {
-		const maxSpeed = stepList.reduce((max, [,,speed], index) => {
-			return Math.max(max, speed)
-		}, 0)
-
+		const pixelsPerValue = lastValue ? lastX / lastValue : 0
 		// With this, we should get the resolution of 1px per datapoint
 		const avgResolution = lastValue / lastX
 		const avgWithSpeeds = calcSeriesSpeedsAtEachInterval(
@@ -100,14 +97,19 @@ function renderStepToCanvas(config, stepList, canvasCtx, offsetY) {
 		)
 		let hasZeroTime = false
 		const infiniteFactor = 2 // how much more space infinite speed (0 time) gets compared to max speed
-		const maxAvgSpeedBase = avgWithSpeeds.reduce((max, [time,,speed]) => {
-			if (time === 0) {
+		const localMaxAvgSpeed = avgWithSpeeds.reduce((max, [time,,speed]) => {
+			if (time === 0 || !Number.isFinite(speed)) {
 				hasZeroTime = true // that's infinite speed
 				return max
 			}
 			return Math.max(max, speed)
 		}, 0)
-		const maxAvgSpeed = maxAvgSpeedBase * (hasZeroTime ? infiniteFactor : 1)
+		const resolvedMaxSpeed = (
+			typeof globalMaxSpeed === 'number' && globalMaxSpeed > 0
+				? globalMaxSpeed
+				: localMaxAvgSpeed
+		) || 1
+		const maxAvgSpeed = resolvedMaxSpeed * (hasZeroTime ? infiniteFactor : 1)
 
 		canvasCtx.save()
 		canvasCtx.beginPath()
@@ -116,7 +118,8 @@ function renderStepToCanvas(config, stepList, canvasCtx, offsetY) {
 		canvasCtx.moveTo(x, y)
 		for (let i = 0, c = avgWithSpeeds.length; i < c; i++) {
 			const [time, value, speed] = avgWithSpeeds[i]
-			x += value // we expect value to be (1) here
+			const valuePx = pixelsPerValue ? value * pixelsPerValue : 0
+			x += valuePx
 			const height = CANVAS_HEIGHT - 1
 			let speedRatio = speed / maxAvgSpeed
 			if (speedRatio > 1) speedRatio = 1
@@ -140,6 +143,10 @@ function renderStepToCanvas(config, stepList, canvasCtx, offsetY) {
 function renderSnapshotToCanvas(snapshot) {
 	const canvas = createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT * snapshot.series.length)
 	const ctx = canvas.getContext('2d')
+	const globalMaxSpeed = snapshot.series.reduce((max, [,,speed]) => {
+		if (!Number.isFinite(speed)) return max
+		return Math.max(max, speed)
+	}, 0)
 	// const seriesSpeeds = calcSeriesSpeedsAtEachInterval(snapshot.series)
 	snapshot.series.forEach((_, index) => {
 		const offsetY = index * CANVAS_HEIGHT
@@ -149,6 +156,7 @@ function renderSnapshotToCanvas(snapshot) {
 			stepList,
 			ctx,
 			offsetY,
+			globalMaxSpeed,
 		)
 	})
 	return canvas
