@@ -205,11 +205,20 @@ function csAvgGetFullInfoFromCut(cut, cutPrev) {
 	return { cut, cutPrev };
 }
 
-function calcSeriesTimeAccumulated(series) {
-	const seriesAccum = []
+function convertSeriesAccumulatedToDeltas(series) {
+	const seriesDeltas = []
 	for (let i = 0, c = series.length; i < c; i++) {
-		// @TODO
+		const accumulatedStep = series[i]
+		const [time0, value0] = series[i - 1] || [0, 0]
+		const [time1, value1] = accumulatedStep
+		const dt = time1 - time0
+		const dv = value1 - value0
+		const deltaStep = [...accumulatedStep]
+		deltaStep[0] = dt
+		deltaStep[1] = dv
+		seriesDeltas.push(deltaStep)
 	}
+	return seriesDeltas
 }
 
 function calcSeriesSpeedsAverageAccumulated(series) {
@@ -240,11 +249,11 @@ function calcSeriesSpeedsAtEachInterval(series, mode = SERIES_TIME_UNIT.ACCUMULA
 		const [time0, value0] = series[i - 1] || [0, 0]
 		const [time1, value1] = series[i]
 		const dt = mode === SERIES_TIME_UNIT.ACCUMULATED
-			? time1
-			: time1 - time0
+			? time1 - time0
+			: time1
 		const dv = mode === SERIES_TIME_UNIT.ACCUMULATED
-			? value1
-			: value1 - value0
+			? value1 - value0
+			: value1
 		const speed = dt ? dv / dt : (dv ? +Infinity : 0)
 		seriesWithSpeeds.push([time1, value1, speed])
 	}
@@ -307,7 +316,7 @@ function calcSeriesAverage(
 		}
 		tPos = tNext;
 	}
-	const avg = calcSeriesSpeedsAtEachInterval(avgBase);
+	const avg = calcSeriesSpeedsAtEachInterval(avgBase, SERIES_TIME_UNIT.INTERVAL);
 	const sum = ci(tSum, vSum);
 	return { avg, sum, holes, sLen, tMin, tMax };
 }
@@ -432,6 +441,7 @@ const simplerApi = {
 	getSegmentCutAndSumFromSeries,
 	csAvgGetSumFromCut,
 	csAvgGetFullInfoFromCut,
+	convertSeriesAccumulatedToDeltas,
 	calcSeriesSpeedsAverageAccumulated,
 	calcSeriesSpeedsAtEachInterval,
 	calcSeriesAverage,

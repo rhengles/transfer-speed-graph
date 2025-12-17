@@ -13,6 +13,7 @@ const {
 	// calcSeriesSpeedsAverageAccumulated,
 	calcSeriesSpeedsAtEachInterval,
 	SERIES_TIME_UNIT,
+	convertSeriesAccumulatedToDeltas,
 } = require('./simpler.js')
 const { createCanvas } = require('canvas')
 
@@ -169,7 +170,23 @@ const snapshot = withSeededRandom(RNG_SEED, () => {
 	data.seriesConfig = seriesConfig
 	data.series = series
 
-	data.amountOverTime = Array.from({ length: 10 }).map((_, index) => {
+	const seriesDeltas = calcSeriesSpeedsAtEachInterval(
+		convertSeriesAccumulatedToDeltas(seriesBase),
+		SERIES_TIME_UNIT.INTERVAL,
+	)
+	data.seriesDeltas = seriesDeltas
+
+	const seriesPrint = printSeries(series)
+	console.log('Series accumulated:')
+	seriesPrint.forEach((line) => console.log(line))
+	data.seriesPrint = seriesPrint
+
+	const seriesDeltasPrint = printSeries(seriesDeltas)
+	console.log('Series deltas:')
+	seriesDeltasPrint.forEach((line) => console.log(line))
+	data.seriesDeltasPrint = seriesDeltasPrint
+
+	data.amountOverTime = Array.from({ length: 2 }).map((_, index) => {
 		const segmentVT = randSegment(series, -50, 150, 10, 30)
 		const segPrintVT = printSegment(segmentVT)
 
@@ -180,7 +197,7 @@ const snapshot = withSeededRandom(RNG_SEED, () => {
 		return segPrintVT
 	})
 
-	data.timeOverAmount = Array.from({ length: 10 }).map((_, index) => {
+	data.timeOverAmount = Array.from({ length: 2 }).map((_, index) => {
 		const segmentTV = randSegment(
 			series,
 			-50,
@@ -200,10 +217,6 @@ const snapshot = withSeededRandom(RNG_SEED, () => {
 		return segPrintTV
 	})
 	// data.timeOverAmount = 
-
-	const seriesPrint = printSeries(series)
-	seriesPrint.forEach((line) => console.log(line))
-	data.seriesPrint = seriesPrint
 
 	data.averageOverTime_10_10 = getSnapshotAverage(
 		'time',
