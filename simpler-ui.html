@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>File Transfer Speed — Windows 10 Simulation</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #6b8099;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+  }
+
+  /* ── dialog shell ── */
+  .dialog {
+    background: #fff;
+    width: 450px;
+    border: 1px solid #888;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.45);
+    user-select: none;
+  }
+
+  /* title bar */
+  .titlebar {
+    background: linear-gradient(to bottom, #4a7a3c, #3a6030);
+    color: #fff;
+    font-size: 12px;
+    padding: 6px 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .titlebar-icon {
+    width: 16px; height: 16px;
+    background: #78b850;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .titlebar-title { flex: 1; }
+  .titlebar-btn {
+    width: 20px; height: 16px;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 2px;
+    color: #fff;
+    font-size: 10px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .titlebar-btn.close { background: #c0392b; border-color: #a93226; }
+
+  /* body */
+  .body { padding: 14px 16px 10px; }
+
+  /* header row */
+  .header-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .file-icon {
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, #e8f4fd, #bde0f7);
+    border: 1px solid #9ecae9;
+    border-radius: 3px;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    color: #2980b9;
+  }
+  .header-text { flex: 1; }
+  .header-desc {
+    font-size: 12px;
+    color: #333;
+    line-height: 1.4;
+  }
+  .header-desc a { color: #0563c1; text-decoration: none; }
+  .pct-label {
+    font-size: 17px;
+    font-weight: 600;
+    color: #111;
+    line-height: 1.2;
+    margin-top: 2px;
+  }
+
+  /* control row (pause + cancel, top-right) */
+  .ctrl-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+  .ctrl-btn {
+    width: 28px; height: 22px;
+    background: #f0f0f0;
+    border: 1px solid #aaa;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 11px;
+    display: flex; align-items: center; justify-content: center;
+    color: #222;
+  }
+  .ctrl-btn:hover { background: #e0e0e0; }
+
+  .start-mode {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 2px 0 8px;
+  }
+  .start-mode button {
+    min-width: 118px;
+    height: 24px;
+    border: 1px solid #aaa;
+    background: #f3f3f3;
+    border-radius: 3px;
+    cursor: pointer;
+    color: #111;
+    font-size: 12px;
+    padding: 0 8px;
+  }
+  .start-mode button:hover {
+    background: #e7e7e7;
+  }
+
+  /* graph */
+  .graph-wrap {
+    position: relative;
+    background: #fff;
+    border: 1px solid #aaa;
+    margin-bottom: 10px;
+  }
+  #graph-canvas { display: block; }
+
+  .graph-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: -2px 0 10px;
+    font-size: 12px;
+    color: #333;
+  }
+  .graph-toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .graph-toolbar button {
+    width: 24px;
+    height: 24px;
+    border: 1px solid #aaa;
+    background: #f3f3f3;
+    border-radius: 3px;
+    cursor: pointer;
+    color: #111;
+  }
+  .graph-toolbar button:hover {
+    background: #e7e7e7;
+  }
+  .graph-toolbar .readout {
+    min-width: 132px;
+    text-align: center;
+  }
+
+  /* stats row */
+  .stats { font-size: 12px; color: #333; line-height: 1.8; margin-bottom: 10px; }
+  .stats span { color: #111; }
+
+  /* "More details" toggle */
+  .details-toggle {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: #0563c1;
+    cursor: pointer;
+    padding: 4px 0;
+    border-top: 1px solid #e0e0e0;
+    margin-top: 4px;
+    user-select: none;
+  }
+  .details-toggle:hover { text-decoration: underline; }
+  .toggle-arrow { font-size: 10px; transition: transform 0.2s; }
+  .toggle-arrow.open { transform: rotate(180deg); }
+
+  /* extended details panel */
+  .details-panel {
+    display: none;
+    font-size: 12px;
+    color: #333;
+    padding: 8px 0 4px;
+    border-top: 1px solid #e0e0e0;
+    line-height: 1.8;
+  }
+  .details-panel.visible { display: block; }
+</style>
+</head>
+<body>
+
+<div class="dialog">
+
+  <!-- Title bar -->
+  <div class="titlebar">
+    <div class="titlebar-icon"></div>
+    <div class="titlebar-title" id="title-text">Copying items</div>
+    <div class="titlebar-btn">—</div>
+    <div class="titlebar-btn close" id="btn-close-title">✕</div>
+  </div>
+
+  <!-- Body -->
+  <div class="body">
+
+    <!-- Header -->
+    <div class="header-row">
+      <div class="file-icon">📄</div>
+      <div class="header-text">
+        <div class="header-desc">
+          Copying items from <a href="#">Downloads</a> to <a href="#">Documents</a>
+        </div>
+        <div class="pct-label" id="pct-label">0% complete</div>
+      </div>
+    </div>
+
+    <!-- Pause / Cancel -->
+    <div class="ctrl-row">
+      <div class="ctrl-btn" id="btn-pause" title="Pause">⏸</div>
+      <div class="ctrl-btn" id="btn-cancel" title="Cancel">✕</div>
+    </div>
+
+    <div class="start-mode" id="start-mode-controls">
+      <button id="btn-start-random" title="Start with random simulation">Iniciar aleatório</button>
+      <button id="btn-start-deterministic" title="Start with deterministic simulation">Iniciar determinístico</button>
+    </div>
+
+    <!-- Graph -->
+    <div class="graph-wrap">
+      <canvas id="graph-canvas" width="416" height="72"></canvas>
+    </div>
+    <div class="graph-toolbar">
+      <div class="graph-toolbar-group">
+        <button id="btn-avg-down" title="Decrease rolling pixel average">−</button>
+        <div class="readout">Média rolante: <span id="pixel-avg-value">1 px</span></div>
+        <button id="btn-avg-up" title="Increase rolling pixel average">+</button>
+      </div>
+      <div class="graph-toolbar-group">
+        <button id="btn-decay-down" title="Decrease max speed decay">−</button>
+        <div class="readout">maxSpeedDecay: <span id="max-speed-decay-value">0.965</span></div>
+        <button id="btn-decay-up" title="Increase max speed decay">+</button>
+      </div>
+      <div class="graph-toolbar-group">
+        <button id="btn-headroom-down" title="Decrease max speed headroom">−</button>
+        <div class="readout">maxSpeedHeadroom: <span id="max-speed-headroom-value">1.06</span></div>
+        <button id="btn-headroom-up" title="Increase max speed headroom">+</button>
+      </div>
+      <div class="graph-toolbar-group">
+        <button id="btn-recalc-scale" title="Recalculate graph scale">R</button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats" id="stats">
+      Name: <span id="stat-name">—</span><br>
+      Time remaining: <span id="stat-time">Calculating…</span><br>
+      Items remaining: <span id="stat-items">1 (256 MB)</span>
+    </div>
+
+    <!-- More details toggle -->
+    <div class="details-toggle" id="toggle-details">
+      <span class="toggle-arrow" id="toggle-arrow">⌄</span>
+      More details
+    </div>
+
+    <!-- Extended details panel -->
+    <div class="details-panel" id="details-panel">
+      Speed: <span id="stat-speed">—</span><br>
+      Elapsed: <span id="stat-elapsed">0:00.000</span><br>
+      Transferred: <span id="stat-transferred">0 B</span>
+    </div>
+
+  </div><!-- /body -->
+</div><!-- /dialog -->
+
+<script src="lib.js"></script>
+<script src="simpler.js"></script>
+<script>
+(function () {
+
+  // ── constants ──────────────────────────────────────────────────────────────
+  var TOTAL_SIZE    = 256 * 1024 * 1024   // 256 MB
+  var CANVAS_W      = 416
+  var CANVAS_H      = 72
+
+  var minFrame      = 20,   maxFrame      = 3020
+  var minRepeat     = 1,    maxRepeat     = 6
+  var minSizeInc    = 8,    maxSizeInc    = 1024 * 1024 + 8
+
+  // ── state ──────────────────────────────────────────────────────────────────
+  var seriesConfig  = { maxValue: TOTAL_SIZE }
+  var series        = [[0, 0]]              // [elapsed_ms, bytes]
+  var runningMaxSpeed = 0
+  var pixelAverageWindow = 1
+  var maxSpeedDecay = 0.500
+  var maxSpeedHeadroom = 1.06
+  var startTime     = 0
+  var pausedAt      = 0
+  var pausedDuration = 0
+  var transfPos     = 0
+  var started       = false
+  var paused        = false
+  var finished      = false
+  var tickTimer     = null
+
+  var frameRepeatIdx     = 1
+  var frameRepeatCurrent = 1
+  var frameCurrent       = minFrame
+  var rngFn              = Math.random
+
+  // ── DOM refs ───────────────────────────────────────────────────────────────
+  var canvas    = document.getElementById('graph-canvas')
+  var ctx       = canvas.getContext('2d')
+  var pctLabel  = document.getElementById('pct-label')
+  var titleText = document.getElementById('title-text')
+  var statName  = document.getElementById('stat-name')
+  var statTime  = document.getElementById('stat-time')
+  var statItems = document.getElementById('stat-items')
+  var statSpeed = document.getElementById('stat-speed')
+  var statElapsed    = document.getElementById('stat-elapsed')
+  var statTransferred = document.getElementById('stat-transferred')
+  var pixelAvgValue = document.getElementById('pixel-avg-value')
+  var maxSpeedDecayValue = document.getElementById('max-speed-decay-value')
+  var maxSpeedHeadroomValue = document.getElementById('max-speed-headroom-value')
+  var btnAvgDown = document.getElementById('btn-avg-down')
+  var btnAvgUp = document.getElementById('btn-avg-up')
+  var btnDecayDown = document.getElementById('btn-decay-down')
+  var btnDecayUp = document.getElementById('btn-decay-up')
+  var btnHeadroomDown = document.getElementById('btn-headroom-down')
+  var btnHeadroomUp = document.getElementById('btn-headroom-up')
+  var btnRecalcScale = document.getElementById('btn-recalc-scale')
+  var startModeControls = document.getElementById('start-mode-controls')
+  var btnStartRandom = document.getElementById('btn-start-random')
+  var btnStartDeterministic = document.getElementById('btn-start-deterministic')
+  var btnPause  = document.getElementById('btn-pause')
+  var btnCancel = document.getElementById('btn-cancel')
+  var toggleBtn = document.getElementById('toggle-details')
+  var toggleArrow   = document.getElementById('toggle-arrow')
+  var detailsPanel  = document.getElementById('details-panel')
+
+  // ── helpers ────────────────────────────────────────────────────────────────
+  function createSeededRandom(seed) {
+    var state = seed >>> 0
+    return function random() {
+      state = (state * 1664525 + 1013904223) >>> 0
+      return state / 0x100000000
+    }
+  }
+
+  function getRand(min, max) {
+    return rngFn() * (max - min) + min
+  }
+
+  function setSimulationMode(mode) {
+    if (mode === 'deterministic') {
+      rngFn = createSeededRandom(0xC0FFEE)
+    } else {
+      rngFn = Math.random
+    }
+  }
+
+  function randFrame() {
+    if (frameRepeatIdx < frameRepeatCurrent) {
+      frameRepeatIdx += 1
+    } else {
+      frameCurrent       = getRand(minFrame, maxFrame)
+      frameRepeatIdx     = 0
+      frameRepeatCurrent = getRand(minRepeat, maxRepeat)
+    }
+    return frameCurrent
+  }
+
+  function randSizeInc() {
+    return getRand(minSizeInc, maxSizeInc)
+  }
+
+  function elapsed() {
+    if (!started) return 0
+    var base = Date.now() - startTime - pausedDuration
+    if (paused) base = pausedAt - startTime - pausedDuration
+    return Math.max(0, base)
+  }
+
+  function speedLabel(series) {
+    if (series.length < 2) return ''
+    var a = series[series.length - 2]
+    var b = series[series.length - 1]
+    var dt = b[0] - a[0]
+    var dv = b[1] - a[1]
+    if (dt <= 0 || dv <= 0) return ''
+    var bps = (dv / dt) * 1000   // bytes per second
+    return bytesSize(bps).join(' ') + '/s'
+  }
+
+  function refreshGraphScale() {
+    if (series.length > 1) {
+      runningMaxSpeed = 0
+      renderFrame()
+    }
+  }
+
+  function setPixelAverageWindow(nextWindow) {
+    var bounded = Math.max(1, Math.min(CANVAS_W, Math.round(nextWindow)))
+    if (bounded === pixelAverageWindow) return
+    pixelAverageWindow = bounded
+    updatePixelAverageUi()
+    refreshGraphScale()
+  }
+
+  function updatePixelAverageUi() {
+    pixelAvgValue.textContent = pixelAverageWindow + ' px / ' + CANVAS_W
+    btnAvgDown.disabled = pixelAverageWindow <= 1
+    btnAvgUp.disabled = pixelAverageWindow >= CANVAS_W
+  }
+
+  function setMaxSpeedDecay(nextValue) {
+    var bounded = Math.max(0.5, Math.min(0.999, Math.round(nextValue * 1000) / 1000))
+    if (bounded === maxSpeedDecay) return
+    maxSpeedDecay = bounded
+    updateScaleUi()
+    refreshGraphScale()
+  }
+
+  function setMaxSpeedHeadroom(nextValue) {
+    var bounded = Math.max(1, Math.min(2, Math.round(nextValue * 100) / 100))
+    if (bounded === maxSpeedHeadroom) return
+    maxSpeedHeadroom = bounded
+    updateScaleUi()
+    refreshGraphScale()
+  }
+
+  function updateScaleUi() {
+    maxSpeedDecayValue.textContent = maxSpeedDecay.toFixed(3)
+    maxSpeedHeadroomValue.textContent = maxSpeedHeadroom.toFixed(2)
+    btnDecayDown.disabled = maxSpeedDecay <= 0.5
+    btnDecayUp.disabled = maxSpeedDecay >= 0.999
+    btnHeadroomDown.disabled = maxSpeedHeadroom <= 1
+    btnHeadroomUp.disabled = maxSpeedHeadroom >= 2
+  }
+
+  // ── render one frame ───────────────────────────────────────────────────────
+  function renderFrame() {
+    var pct = TOTAL_SIZE > 0 ? transfPos / TOTAL_SIZE : 0
+
+    // Recalculate the dynamic max from scratch every frame (same behavior as R).
+    runningMaxSpeed = 0
+
+    // update running max speed for this frame
+    if (series.length > 1) {
+      var avgResult = calcAverageSpeedsForResolution(
+        seriesConfig,
+        series,
+        { w: CANVAS_W, h: CANVAS_H },
+        { pixelAverageWindow: pixelAverageWindow }
+      )
+      if (avgResult && avgResult.localMaxAvgSpeed > 0) {
+        runningMaxSpeed = resolveGraphMaxSpeed(
+          avgResult.localMaxAvgSpeed,
+          runningMaxSpeed,
+          { maxSpeedDecay: maxSpeedDecay, maxSpeedHeadroom: maxSpeedHeadroom }
+        )
+      }
+    }
+
+    // draw graph
+    renderStepToCanvas(
+      seriesConfig, series, ctx,
+      { w: CANVAS_W, h: CANVAS_H },
+      runningMaxSpeed || undefined,
+      {
+        speedLabel: speedLabel(series),
+        pixelAverageWindow: pixelAverageWindow,
+      }
+    )
+
+    // update UI
+    var pctInt = Math.round(pct * 100)
+    pctLabel.textContent   = pctInt + '% complete'
+    titleText.textContent  = pctInt + '% complete'
+
+    var elMs = elapsed()
+    var remaining = pct > 0 ? elMs / pct * (1 - pct) : 0
+
+    statName.textContent        = 'large_file_' + (Math.floor(transfPos / (32 * 1024 * 1024)) + 1) + '.dat'
+    statTime.textContent        = pct >= 1 ? 'Complete'
+                                : pct > 0  ? 'About ' + printTime(Math.round(remaining))
+                                : 'Calculating…'
+    var remBytes = TOTAL_SIZE - transfPos
+    statItems.textContent       = '1 (' + bytesSize(remBytes).join(' ') + ')'
+    statSpeed.textContent       = speedLabel(series)
+    statElapsed.textContent     = printTime(elMs)
+    statTransferred.textContent = bytesSize(transfPos).join(' ') + ' / ' + bytesSize(TOTAL_SIZE).join(' ')
+  }
+
+  // ── tick: advance simulation ───────────────────────────────────────────────
+  function tick() {
+    if (paused || finished) return
+
+    var size = randSizeInc()
+    transfPos = Math.min(TOTAL_SIZE, transfPos + size)
+    var el = elapsed()
+    series.push([el, transfPos])
+
+    renderFrame()
+
+    if (transfPos >= TOTAL_SIZE) {
+      finished = true
+      pctLabel.textContent  = '100% complete'
+      titleText.textContent = '100% complete'
+      btnPause.textContent  = '⏸'
+      btnPause.style.opacity = '0.4'
+      btnPause.style.pointerEvents = 'none'
+      return
+    }
+
+    tickTimer = setTimeout(tick, randFrame())
+  }
+
+  // ── start / pause / resume ─────────────────────────────────────────────────
+  function startTransfer() {
+    if (started || finished) return
+    started   = true
+    startTime = Date.now()
+    startModeControls.style.display = 'none'
+    btnPause.style.opacity = '1'
+    btnPause.style.pointerEvents = 'auto'
+    tickTimer = setTimeout(tick, randFrame())
+  }
+
+  function startTransferWithMode(mode) {
+    if (started || finished) return
+    setSimulationMode(mode)
+    startTransfer()
+  }
+
+  function togglePause() {
+    if (!started || finished) return
+    if (paused) {
+      // resume
+      pausedDuration += Date.now() - pausedAt
+      paused = false
+      btnPause.textContent = '⏸'
+      tickTimer = setTimeout(tick, randFrame())
+    } else {
+      // pause
+      paused  = true
+      pausedAt = Date.now()
+      clearTimeout(tickTimer)
+      btnPause.textContent = '▶'
+    }
+  }
+
+  function cancelTransfer() {
+    finished = true
+    clearTimeout(tickTimer)
+    paused = false
+    titleText.textContent = 'Cancelled'
+    pctLabel.textContent  = 'Transfer cancelled'
+    btnPause.style.opacity = '0.4'
+    btnPause.style.pointerEvents = 'none'
+  }
+
+  // ── toggle details ─────────────────────────────────────────────────────────
+  toggleBtn.addEventListener('click', function () {
+    var open = detailsPanel.classList.toggle('visible')
+    toggleArrow.classList.toggle('open', open)
+    toggleBtn.childNodes[2].nodeValue = open ? ' Fewer details' : ' More details'
+  })
+
+  // ── wire up buttons ────────────────────────────────────────────────────────
+  btnPause.addEventListener('click', togglePause)
+  btnCancel.addEventListener('click', cancelTransfer)
+  btnStartRandom.addEventListener('click', function () { startTransferWithMode('random') })
+  btnStartDeterministic.addEventListener('click', function () { startTransferWithMode('deterministic') })
+  btnAvgDown.addEventListener('click', function () { setPixelAverageWindow(pixelAverageWindow - 1) })
+  btnAvgUp.addEventListener('click', function () { setPixelAverageWindow(pixelAverageWindow + 1) })
+  btnDecayDown.addEventListener('click', function () { setMaxSpeedDecay(maxSpeedDecay - 0.005) })
+  btnDecayUp.addEventListener('click', function () { setMaxSpeedDecay(maxSpeedDecay + 0.005) })
+  btnHeadroomDown.addEventListener('click', function () { setMaxSpeedHeadroom(maxSpeedHeadroom - 0.01) })
+  btnHeadroomUp.addEventListener('click', function () { setMaxSpeedHeadroom(maxSpeedHeadroom + 0.01) })
+  btnRecalcScale.addEventListener('click', refreshGraphScale)
+  document.getElementById('btn-close-title').addEventListener('click', cancelTransfer)
+
+  // ── draw empty canvas on load, auto-start ─────────────────────────────────
+  ctx.clearRect(0, 0, CANVAS_W, CANVAS_H)
+  ctx.strokeStyle = 'rgba(0,0,0,0.2)'
+  ctx.lineWidth = 1
+  ctx.strokeRect(0.5, 0.5, CANVAS_W - 1, CANVAS_H - 1)
+  btnPause.style.opacity = '0.4'
+  btnPause.style.pointerEvents = 'none'
+  updatePixelAverageUi()
+  updateScaleUi()
+
+})()
+</script>
+</body>
+</html>

@@ -16,6 +16,7 @@ const {
 	convertSeriesAccumulatedToDeltas,
 	renderStepToCanvas,
 	calcAverageSpeedsForResolution,
+	resolveGraphMaxSpeed,
 } = require('./simpler.js')
 const { createCanvas } = require('canvas')
 
@@ -94,15 +95,26 @@ function getSnapshotAverageSpeedsAtResolution(seriesConfig, series, { w: canvasW
 function renderSnapshotToCanvas(snapshot) {
 	const canvas = createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT * snapshot.series.length)
 	const ctx = canvas.getContext('2d')
-	// const globalMaxSpeed = snapshot.series.reduce((max, [,,speed]) => {
-	// 	if (!Number.isFinite(speed)) return max
-	// 	return Math.max(max, speed)
-	// }, 0)
-	// const seriesSpeeds = calcSeriesSpeedsAtEachInterval(snapshot.series)
+	let runningMaxSpeed = 0
 
 	snapshot.series.forEach((_, index) => {
 		const offsetY = index * CANVAS_HEIGHT
 		const stepList = snapshot.series.slice(0, index + 1)
+
+		// Update the running max speed so the Y scale only ever grows (never rescales down)
+		const avgResult = calcAverageSpeedsForResolution(
+			snapshot.seriesConfig,
+			stepList,
+			{ w: CANVAS_WIDTH, h: CANVAS_HEIGHT },
+		)
+		if (avgResult && avgResult.localMaxAvgSpeed > 0) {
+			runningMaxSpeed = resolveGraphMaxSpeed(
+				avgResult.localMaxAvgSpeed,
+				runningMaxSpeed,
+				{ maxSpeedDecay: 0.965, maxSpeedHeadroom: 1.06 }
+			)
+		}
+
 		ctx.save()
 		ctx.translate(0, offsetY)
 		renderStepToCanvas(
@@ -110,7 +122,7 @@ function renderSnapshotToCanvas(snapshot) {
 			stepList,
 			ctx,
 			{ w: CANVAS_WIDTH, h: CANVAS_HEIGHT },
-			// globalMaxSpeed,
+			runningMaxSpeed || undefined,
 		)
 		ctx.restore()
 	})

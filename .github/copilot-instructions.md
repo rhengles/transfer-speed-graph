@@ -1,6 +1,6 @@
 # Agent Instructions
 
-## Older process
+## Older process (ignore for now, see simpler.js for refactored code)
 
 - Load index.html directly in a browser; it wires up the control bar, canvas graph, and metrics table via plain scripts plus the ES module slider demo in module.js.
 - index.js holds the transfer simulator: fnSpeedRecorder() collects timestamped byte totals, createRowManager() updates the table, and start/pause/resume drive fake progress—reuse speedRec.start(totalBytes) and speedRec.update(bytesDone) for real data.
@@ -19,6 +19,70 @@
 - `randSegment(series, offsetMin, offsetMax, lengthMin, lengthMax, getValue?, getTime?, createItem?)` slices a random subsegment either over time or size depending on the accessor trio supplied; `createSeriesItemInverted` swaps axes when you want “time over amount” instead of “amount over time”.
 - `calcSeriesSpeedsAtEachInterval(series, SERIES_TIME_UNIT.ACCUMULATED|INTERVAL)` converts raw tuples into per-step deltas with consistent time semantics; pass `convertSeriesAccumulatedToDeltas(series)` plus `SERIES_TIME_UNIT.INTERVAL` when you already have deltas.
 - `printSeries(series)` and `printSegment(segment)` stringify tuples for debugging, while `printAverage(calcSeriesAverage(...))` pretty-prints interval stats (sum plus any coverage holes) that get logged into simpler-test snapshots.
+- Dynamic Y-scale pitfall and fix: very short speed spikes can flatten the whole graph when the previous max is carried forward too aggressively. In this repo, the "R" recalc proved that recalculating with current parameters restored visibility. The applied solution is to recalculate the graph max every frame in `simpler-ui.html` (same behavior as pressing R continuously) and to prevent headroom compounding in `resolveGraphMaxSpeed()` by removing prior headroom before applying decay.
+
+### Configurable graph parameters (simpler-ui)
+
+The simulator exposes three runtime controls that affect how the dark-green curve is drawn and scaled:
+
+- `pixelAverageWindow` ("Média rolante")
+	- Purpose: smooths the speed series over the last N resolved graph columns (pixel-like steps).
+	- Where applied: smoothing happens before both rendering and peak detection (`applyRollingAverageToSpeedSeries` in `simpler.js`).
+	- Range in UI: `1` to canvas width (`CANVAS_W`, currently `416`).
+	- Behavior:
+		- Low values (`1-4`): more reactive graph, more jitter.
+		- Medium values (`8-32`): good balance between readability and responsiveness.
+		- High values (`64+`): very stable curve, but short spikes are heavily diluted.
+
+- `maxSpeedDecay`
+	- Purpose: controls how fast the dynamic Y-axis "forgets" older high peaks.
+	- Where applied: `resolveGraphMaxSpeed()` in `simpler.js`.
+	- Range in UI: `0.500` to `0.999`.
+	- Behavior:
+		- Lower (`0.80-0.93`): axis shrinks faster; graph regains height quickly after spikes.
+		- Higher (`0.96-0.995`): axis keeps historical highs longer; steadier scale, but can flatten curve after brief peaks.
+
+- `maxSpeedHeadroom`
+	- Purpose: adds vertical margin above the current dynamic max to avoid clipping at the top.
+	- Where applied: `resolveGraphMaxSpeed()` in `simpler.js`.
+	- Range in UI: `1.00` to `2.00`.
+	- Behavior:
+		- Near `1.00`: curve uses almost full height, visually stronger peaks.
+		- Higher (`1.10-1.30`): more top padding, safer against clipping, but visually flatter.
+
+Important interaction notes:
+
+- `pixelAverageWindow` affects both the curve and the local max used by dynamic scaling; it is not just cosmetic.
+- Effective axis responsiveness is mostly a combination of `maxSpeedDecay` and `maxSpeedHeadroom`:
+	- Higher decay + higher headroom -> more conservative axis (flatter graph).
+	- Lower decay + lower headroom -> more aggressive axis (taller graph).
+- The UI now recalculates dynamic max every frame (equivalent to pressing "R" continuously), so the graph does not depend on manual parameter nudges to recover visibility.
+
+Suggested presets:
+
+- "Raw/diagnostic" (show turbulence):
+	- `pixelAverageWindow = 1`
+	- `maxSpeedDecay = 0.985`
+	- `maxSpeedHeadroom = 1.08`
+
+- "Balanced Windows-like":
+	- `pixelAverageWindow = 12`
+	- `maxSpeedDecay = 0.965`
+	- `maxSpeedHeadroom = 1.06`
+
+- "Smooth and readable under noisy I/O":
+	- `pixelAverageWindow = 28`
+	- `maxSpeedDecay = 0.93`
+	- `maxSpeedHeadroom = 1.03`
+
+Troubleshooting by symptom:
+
+- Symptom: graph looks too tiny after a short huge spike.
+	- Try: lower `maxSpeedDecay` first (faster recovery), then lower `maxSpeedHeadroom`.
+- Symptom: graph oscillates too much and is hard to read.
+	- Try: increase `pixelAverageWindow`.
+- Symptom: graph touches top edge too often.
+	- Try: increase `maxSpeedHeadroom` slightly (`+0.01` to `+0.03`).
 
 ### New snapshot test (simpler-test.js)
 

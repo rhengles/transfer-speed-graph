@@ -426,7 +426,65 @@ function printAverage(obj, gt, gv, printList = printSeries) {
 	};
 }
 
-function calcAverageSpeedsForResolution(config, stepList, { w: canvasWidth, h: canvasHeight }) {
+function clampPixelAverageWindow(pixelAverageWindow, maxWindow) {
+	const maxAllowed = Math.max(1, Math.floor(maxWindow || 1))
+	const nextWindow = Math.floor(pixelAverageWindow)
+	if (!Number.isFinite(nextWindow)) return 1
+	return Math.min(Math.max(1, nextWindow), maxAllowed)
+}
+
+function applyRollingAverageToSpeedSeries(avgWithSpeeds, pixelAverageWindow) {
+	const windowSize = clampPixelAverageWindow(pixelAverageWindow, avgWithSpeeds.length)
+	if (windowSize <= 1 || avgWithSpeeds.length <= 1) {
+		return avgWithSpeeds
+	}
+	const finiteWindow = []
+	const smoothed = []
+	let finiteSum = 0
+	let finiteCount = 0
+	for (let i = 0, c = avgWithSpeeds.length; i < c; i++) {
+		const step = avgWithSpeeds[i]
+		const speed = step[2]
+		const finiteSpeed = Number.isFinite(speed) ? speed : undefined
+		finiteWindow.push(finiteSpeed)
+		if (finiteSpeed !== undefined) {
+			finiteSum += finiteSpeed
+			finiteCount += 1
+		}
+		if (finiteWindow.length > windowSize) {
+			const removedSpeed = finiteWindow.shift()
+			if (removedSpeed !== undefined) {
+				finiteSum -= removedSpeed
+				finiteCount -= 1
+			}
+		}
+		const smoothedSpeed = finiteCount ? finiteSum / finiteCount : speed
+		smoothed.push([step[0], step[1], smoothedSpeed])
+	}
+	return smoothed
+}
+
+function resolveGraphMaxSpeed(localMaxAvgSpeed, previousMaxSpeed, renderOptions) {
+	const localMax = Number.isFinite(localMaxAvgSpeed) && localMaxAvgSpeed > 0
+		? localMaxAvgSpeed
+		: 1
+	const decay = Number.isFinite(renderOptions?.maxSpeedDecay) && renderOptions.maxSpeedDecay > 0 && renderOptions.maxSpeedDecay < 1
+		? renderOptions.maxSpeedDecay
+		: 0.96
+	const headroom = Number.isFinite(renderOptions?.maxSpeedHeadroom) && renderOptions.maxSpeedHeadroom >= 1
+		? renderOptions.maxSpeedHeadroom
+		: 1.08
+	const previousMax = Number.isFinite(previousMaxSpeed) && previousMaxSpeed > 0
+		? previousMaxSpeed
+		: 0
+	// previousMaxSpeed already includes headroom from the prior frame, so remove it
+	// before applying decay to avoid compounding headroom over time.
+	const previousBase = previousMax ? previousMax / headroom : 0
+	const decayedMax = previousBase ? previousBase * decay : 0
+	return Math.max(localMax, decayedMax) * headroom
+}
+
+function calcAverageSpeedsForResolution(config, stepList, { w: canvasWidth, h: canvasHeight }, renderOptions) {
 	if (!stepList.length) return
 	const lastStep = stepList[stepList.length - 1]
 	const [, lastValue] = lastStep
@@ -447,9 +505,11 @@ function calcAverageSpeedsForResolution(config, stepList, { w: canvasWidth, h: c
 			).avg,
 			SERIES_TIME_UNIT.INTERVAL,
 		)
+		const pixelAverageWindow = clampPixelAverageWindow(renderOptions?.pixelAverageWindow, canvasWidth)
+		const avgWithSpeedsSmoothed = applyRollingAverageToSpeedSeries(avgWithSpeeds, pixelAverageWindow)
 		let hasZeroTime = false
 		const infiniteFactor = 2 // how much more space infinite speed (0 time) gets compared to max speed
-		const localMaxAvgSpeed = avgWithSpeeds.reduce((max, [time,,speed]) => {
+		const localMaxAvgSpeed = avgWithSpeedsSmoothed.reduce((max, [time,,speed]) => {
 			if (time === 0 || !Number.isFinite(speed)) {
 				hasZeroTime = true // that's infinite speed
 				return max
@@ -466,15 +526,15 @@ function calcAverageSpeedsForResolution(config, stepList, { w: canvasWidth, h: c
 		let x = 0
 		let y = height
 		// canvasCtx.moveTo(x, y)
-		for (let i = 0, c = avgWithSpeeds.length; i < c; i++) {
-			const [time, value, speed] = avgWithSpeeds[i]
+		for (let i = 0, c = avgWithSpeedsSmoothed.length; i < c; i++) {
+			const [time, value, speed] = avgWithSpeedsSmoothed[i]
 			const valuePx = pixelsPerValue ? value * pixelsPerValue : 0
 			x += valuePx
 			let speedRatio = time === 0 ? 1
 				: Math.min(1, speed / maxAvgSpeed)
 			y = height - (height * speedRatio) + 0
 			// canvasCtx.lineTo(x, y)
-			avgWithSpeeds[i].push(x, y)
+			avgWithSpeedsSmoothed[i].push(x, y)
 		}
 		return {
 			lastX,
@@ -482,57 +542,61 @@ function calcAverageSpeedsForResolution(config, stepList, { w: canvasWidth, h: c
 			maxValue: config.maxValue,
 			pixelsPerValue,
 			avgResolution,
-			avgWithSpeeds,
+			avgWithSpeeds: avgWithSpeedsSmoothed,
 			localMaxAvgSpeed,
 			maxAvgSpeed,
+			hasZeroTime,
+			pixelAverageWindow,
 			canvasWidth,
 			canvasHeight,
 		}
 	}
 }
 
-function renderStepToCanvas(config, stepList, canvasCtx, { w: canvasWidth, h: canvasHeight }, globalMaxSpeed) {
+function renderStepToCanvas(config, stepList, canvasCtx, { w: canvasWidth, h: canvasHeight }, globalMaxSpeed, renderOptions) {
+	const {
+		colorBackground = '#a1e992',
+		colorBackgroundStroke = '#8dd07a',
+		colorOverlay = '#06b027',
+		gridCols = 8,
+		gridRows = 4,
+		gridColor = 'rgba(255,255,255,0.4)',
+		borderColor = 'rgba(0,0,0,0.25)',
+		speedLabel = '',
+		speedLabelColor = 'rgba(0,0,0,0.75)',
+		speedGuideColor = 'rgba(0,0,0,0.7)',
+	} = renderOptions || {}
 	if (!stepList.length) return
 	const lastStep = stepList[stepList.length - 1]
 	const [, lastValue] = lastStep
-	// const maxValue = config.maxValue
 	const lastX = lastValue / config.maxValue * (canvasWidth - 1)
+	let currentSpeedY = undefined
 
 	canvasCtx.save()
 
 	canvasCtx.clearRect(0, 0, canvasWidth, canvasHeight)
-	canvasCtx.fillStyle = '#00ff00'
-	canvasCtx.strokeStyle = '#00e000'
+	canvasCtx.fillStyle = colorBackground
+	canvasCtx.strokeStyle = colorBackgroundStroke
 	canvasCtx.lineWidth = 1
 	canvasCtx.beginPath()
-	canvasCtx.rect(0.5, 0.5, lastX, canvasHeight-1)
+	canvasCtx.rect(0.5, 0.5, lastX, canvasHeight - 1)
 	canvasCtx.fill()
 	canvasCtx.stroke()
 
 	if (lastX) {
-		const pixelsPerValue = lastValue ? lastX / lastValue : 0
-		// With this, we should get the resolution of 1px per datapoint
-		const avgResolution = lastValue / lastX
-		const avgWithSpeeds = calcSeriesSpeedsAtEachInterval(
-			calcSeriesAverage(
-				stepList,
-				avgResolution, // resolution,
-				avgResolution, // averageValue,
-				getValueOfSeriesItem,
-				getTimeOfSeriesItem,
-				createSeriesItemInverted,
-			).avg,
-			SERIES_TIME_UNIT.INTERVAL,
+		const avgResult = calcAverageSpeedsForResolution(
+			config,
+			stepList,
+			{ w: canvasWidth, h: canvasHeight },
+			renderOptions,
 		)
-		let hasZeroTime = false
+		const {
+			avgWithSpeeds,
+			pixelsPerValue,
+			localMaxAvgSpeed,
+			hasZeroTime,
+		} = avgResult
 		const infiniteFactor = 2 // how much more space infinite speed (0 time) gets compared to max speed
-		const localMaxAvgSpeed = avgWithSpeeds.reduce((max, [time,,speed]) => {
-			if (time === 0 || !Number.isFinite(speed)) {
-				hasZeroTime = true // that's infinite speed
-				return max
-			}
-			return Math.max(max, speed)
-		}, 0)
 		const resolvedMaxSpeed = (
 			typeof globalMaxSpeed === 'number' && globalMaxSpeed > 0
 				? globalMaxSpeed
@@ -555,15 +619,78 @@ function renderStepToCanvas(config, stepList, canvasCtx, { w: canvasWidth, h: ca
 			y = height - (height * speedRatio) + 0.5
 			canvasCtx.lineTo(x, y)
 		}
+		currentSpeedY = y
 		canvasCtx.lineTo(x, canvasHeight - 0.5)
 		canvasCtx.closePath()
-		canvasCtx.fillStyle = '#008000'
+		canvasCtx.fillStyle = colorOverlay
 		canvasCtx.fill()
 		// canvasCtx.strokeStyle = '#e00000'
 		// canvasCtx.stroke()
 		canvasCtx.restore()
 
 	}
+
+	// Grid lines drawn over the full canvas width (including the unfilled area)
+	canvasCtx.save()
+	canvasCtx.strokeStyle = gridColor
+	canvasCtx.lineWidth = 1
+	for (let i = 1; i < gridCols; i++) {
+		const gx = Math.round(canvasWidth * i / gridCols) + 0.5
+		canvasCtx.beginPath()
+		canvasCtx.moveTo(gx, 0.5)
+		canvasCtx.lineTo(gx, canvasHeight - 0.5)
+		canvasCtx.stroke()
+	}
+	for (let i = 1; i < gridRows; i++) {
+		const gy = Math.round(canvasHeight * i / gridRows) + 0.5
+		canvasCtx.beginPath()
+		canvasCtx.moveTo(0.5, gy)
+		canvasCtx.lineTo(canvasWidth - 0.5, gy)
+		canvasCtx.stroke()
+	}
+	canvasCtx.restore()
+
+	// Speed label aligned to the right edge with a guide line at the current speed height.
+	if (speedLabel && Number.isFinite(currentSpeedY)) {
+		canvasCtx.save()
+		canvasCtx.font = 'bold 11px sans-serif'
+		const labelPaddingX = 4
+		const labelPaddingY = 2
+		const labelMetrics = canvasCtx.measureText(speedLabel)
+		const labelWidth = Math.ceil(labelMetrics.width)
+		const guideY = Math.max(10.5, Math.min(canvasHeight - 3.5, currentSpeedY))
+		const textX = canvasWidth - 4.5
+		const labelBottomY = Math.max(12.5, Math.min(canvasHeight - 2.5, guideY - 2))
+		const labelTopY = labelBottomY - 11 - labelPaddingY * 2
+		const labelLeftX = textX - labelWidth - labelPaddingX * 2
+
+		canvasCtx.strokeStyle = speedGuideColor
+		canvasCtx.lineWidth = 1
+		canvasCtx.beginPath()
+		canvasCtx.moveTo(0.5, guideY)
+		canvasCtx.lineTo(canvasWidth - 3.5, guideY)
+		canvasCtx.stroke()
+
+		canvasCtx.fillStyle = 'rgba(255,255,255,0.92)'
+		canvasCtx.fillRect(
+			labelLeftX,
+			labelTopY,
+			labelWidth + labelPaddingX * 2,
+			11 + labelPaddingY * 2
+		)
+		canvasCtx.fillStyle = speedLabelColor
+		canvasCtx.textAlign = 'right'
+		canvasCtx.textBaseline = 'bottom'
+		canvasCtx.fillText(speedLabel, textX, labelBottomY)
+		canvasCtx.restore()
+	}
+
+	// Border around the entire canvas
+	canvasCtx.save()
+	canvasCtx.strokeStyle = borderColor
+	canvasCtx.lineWidth = 1
+	canvasCtx.strokeRect(0.5, 0.5, canvasWidth - 1, canvasHeight - 1)
+	canvasCtx.restore()
 
 	canvasCtx.restore()
 }
@@ -599,6 +726,7 @@ const simplerApi = {
 	printAverage,
 	calcAverageSpeedsForResolution,
 	renderStepToCanvas,
+	resolveGraphMaxSpeed,
 	SERIES_TIME_UNIT,
 };
 
