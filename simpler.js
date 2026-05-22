@@ -564,9 +564,9 @@ function renderStepToCanvas(config, stepList, canvasCtx, { w: canvasWidth, h: ca
 		colorBackground = '#a1e992',
 		colorBackgroundStroke = '#8dd07a',
 		colorOverlay = '#06b027',
-		gridCols = 8,
-		gridRows = 4,
-		gridColor = 'rgba(255,255,255,0.4)',
+		gridCols = 10,
+		gridRows = 5,
+		gridColor = 'rgba(0,0,0,0.125)',
 		borderColor = 'rgba(0,0,0,0.25)',
 		speedLabel = '',
 		speedLabelColor = 'rgba(0,0,0,0.75)',
@@ -588,6 +588,26 @@ function renderStepToCanvas(config, stepList, canvasCtx, { w: canvasWidth, h: ca
 	canvasCtx.rect(0.5, 0.5, lastX, canvasHeight - 1)
 	canvasCtx.fill()
 	canvasCtx.stroke()
+
+	// Grid lines drawn over the full canvas width (including the unfilled area)
+	canvasCtx.save()
+	canvasCtx.strokeStyle = gridColor
+	canvasCtx.lineWidth = 1
+	for (let i = 1; i < gridCols; i++) {
+		const gx = Math.round(canvasWidth * i / gridCols) + 0.5
+		canvasCtx.beginPath()
+		canvasCtx.moveTo(gx, 0.5)
+		canvasCtx.lineTo(gx, canvasHeight - 0.5)
+		canvasCtx.stroke()
+	}
+	for (let i = 1; i < gridRows; i++) {
+		const gy = Math.round(canvasHeight * i / gridRows) + 0.5
+		canvasCtx.beginPath()
+		canvasCtx.moveTo(0.5, gy)
+		canvasCtx.lineTo(canvasWidth - 0.5, gy)
+		canvasCtx.stroke()
+	}
+	canvasCtx.restore()
 
 	if (lastX) {
 		const avgResult = calcAverageSpeedsForResolution(
@@ -633,26 +653,6 @@ function renderStepToCanvas(config, stepList, canvasCtx, { w: canvasWidth, h: ca
 		canvasCtx.restore()
 
 	}
-
-	// Grid lines drawn over the full canvas width (including the unfilled area)
-	canvasCtx.save()
-	canvasCtx.strokeStyle = gridColor
-	canvasCtx.lineWidth = 1
-	for (let i = 1; i < gridCols; i++) {
-		const gx = Math.round(canvasWidth * i / gridCols) + 0.5
-		canvasCtx.beginPath()
-		canvasCtx.moveTo(gx, 0.5)
-		canvasCtx.lineTo(gx, canvasHeight - 0.5)
-		canvasCtx.stroke()
-	}
-	for (let i = 1; i < gridRows; i++) {
-		const gy = Math.round(canvasHeight * i / gridRows) + 0.5
-		canvasCtx.beginPath()
-		canvasCtx.moveTo(0.5, gy)
-		canvasCtx.lineTo(canvasWidth - 0.5, gy)
-		canvasCtx.stroke()
-	}
-	canvasCtx.restore()
 
 	// Speed label aligned to the right edge with a guide line at the current speed height.
 	if (speedLabel && Number.isFinite(currentSpeedY)) {

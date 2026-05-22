@@ -499,6 +499,9 @@
       {
         speedLabel: speedLabel(series),
         pixelAverageWindow: pixelAverageWindow,
+        colorBackground: paused ? '#f4e499' : undefined,
+        colorOverlay: paused ? '#b19704' : undefined,
+		gridColor: paused ? '#ebe070' : undefined,
       }
     )
 
@@ -579,6 +582,7 @@
       }
       paused = false
       btnPause.textContent = '⏸'
+      renderFrame()
       scheduleTick()
     } else {
       // pause
@@ -586,6 +590,7 @@
       pausedAt = Date.now()
       clearTimeout(tickTimer)
       btnPause.textContent = '▶'
+      renderFrame()
     }
   }
 
