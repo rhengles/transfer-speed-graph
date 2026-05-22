@@ -19,5 +19,24 @@
 - `randSegment(series, offsetMin, offsetMax, lengthMin, lengthMax, getValue?, getTime?, createItem?)` slices a random subsegment either over time or size depending on the accessor trio supplied; `createSeriesItemInverted` swaps axes when you want “time over amount” instead of “amount over time”.
 - `calcSeriesSpeedsAtEachInterval(series, SERIES_TIME_UNIT.ACCUMULATED|INTERVAL)` converts raw tuples into per-step deltas with consistent time semantics; pass `convertSeriesAccumulatedToDeltas(series)` plus `SERIES_TIME_UNIT.INTERVAL` when you already have deltas.
 - `printSeries(series)` and `printSegment(segment)` stringify tuples for debugging, while `printAverage(calcSeriesAverage(...))` pretty-prints interval stats (sum plus any coverage holes) that get logged into simpler-test snapshots.
-- Run `node simpler-test.js` to regenerate the 21-stage gallery in snapshots/simpler.png; each row adds a new datapoint to the bright bar (total progress) while the dark overlay reuses the prior shape and fills the newly completed region using the global max speed for vertical scaling.
+
+### New snapshot test (simpler-test.js)
+
+- Run `node simpler-test.js` to regenerate the 21-stage gallery in snapshots/simpler.png; each row adds a new datapoint to the bright bar (total progress) while the dark overlay reuses the prior shape and fills the newly completed region using the max speed of all the datapoints available at each stage for vertical scaling.
 - Inspect snapshots/simpler.json alongside the PNG to understand discrepancies: it logs the seeded input series, delta transforms, random segments, and printed averages so you can diff/debug visual glitches without stepping through the renderer.
+
+## Inspiration: Windows 10 file transfer speed graph
+
+Windows 10 provides a built-in file transfer speed graph that visually tracks your copy and move operations. To see this graph in File Explorer, simply click the "More details" arrow at the bottom of the transfer window.
+
+See the images in the /inspiration folder for examples of the graph in action.
+
+### Reading the Transfer Graph
+
+- *Dark Green Graph:* Represents your live, real-time transfer speed and will fluctuate depending on what is happening in the background.
+- *Light Green Background:* Indicates the general progress and speed capacity of the overall operation.
+- *No Graph at Start:* It is normal for the graph to remain blank for a few moments as Windows goes through a "discovery phase" to count, calculate, and prepare the files.
+
+### Why the Graph Fluctuates (Seesaw Effect)
+- *File Size:* Many small files cause your speed to drop because Windows has to process the start/stop overhead for each individual file, whereas one large file yields a steadier graph.
+- *Drive Caching:* The transfer might start out incredibly fast (writing to your computer's RAM), then suddenly plummet when the OS begins writing the data from RAM to the physical destination disk.

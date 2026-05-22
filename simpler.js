@@ -349,8 +349,9 @@ function randSegment(
 
 function printItem(o, gt = getTimeOfSeriesItem, gv = getValueOfSeriesItem) {
 	const s = (o && 2 in o) ? ` s ${String(getSpeedOfSeriesItem(o)).padStart(3)}` : ''
+	const xy = (o && 4 in o) ? ` / x ${String(o[3]).padStart(3)} y ${String(o[4]).padStart(3)}` : ''
 	return o
-		? `t ${String(gt(o)).padStart(3)} v ${String(gv(o)).padStart(3)}${s}`
+		? `t ${String(gt(o)).padStart(3)} v ${String(gv(o)).padStart(3)}${s}${xy}`
 		: o;
 }
 
@@ -425,6 +426,148 @@ function printAverage(obj, gt, gv, printList = printSeries) {
 	};
 }
 
+function calcAverageSpeedsForResolution(config, stepList, { w: canvasWidth, h: canvasHeight }) {
+	if (!stepList.length) return
+	const lastStep = stepList[stepList.length - 1]
+	const [, lastValue] = lastStep
+	// const maxValue = config.maxValue
+	const lastX = lastValue / config.maxValue * (canvasWidth - 1)
+	if (lastX) {
+		const pixelsPerValue = lastValue ? lastX / lastValue : 0
+		// With this, we should get the resolution of 1px per datapoint
+		const avgResolution = lastValue / lastX
+		const avgWithSpeeds = calcSeriesSpeedsAtEachInterval(
+			calcSeriesAverage(
+				stepList,
+				avgResolution, // resolution,
+				avgResolution, // averageValue,
+				getValueOfSeriesItem,
+				getTimeOfSeriesItem,
+				createSeriesItemInverted,
+			).avg,
+			SERIES_TIME_UNIT.INTERVAL,
+		)
+		let hasZeroTime = false
+		const infiniteFactor = 2 // how much more space infinite speed (0 time) gets compared to max speed
+		const localMaxAvgSpeed = avgWithSpeeds.reduce((max, [time,,speed]) => {
+			if (time === 0 || !Number.isFinite(speed)) {
+				hasZeroTime = true // that's infinite speed
+				return max
+			}
+			return Math.max(max, speed)
+		}, 0)
+		// const resolvedMaxSpeed = (
+		// 	typeof globalMaxSpeed === 'number' && globalMaxSpeed > 0
+		// 		? globalMaxSpeed
+		// 		: localMaxAvgSpeed
+		// ) || 1
+		const maxAvgSpeed = localMaxAvgSpeed * (hasZeroTime ? infiniteFactor : 1)
+		const height = canvasHeight - 1
+		let x = 0
+		let y = height
+		// canvasCtx.moveTo(x, y)
+		for (let i = 0, c = avgWithSpeeds.length; i < c; i++) {
+			const [time, value, speed] = avgWithSpeeds[i]
+			const valuePx = pixelsPerValue ? value * pixelsPerValue : 0
+			x += valuePx
+			let speedRatio = time === 0 ? 1
+				: Math.min(1, speed / maxAvgSpeed)
+			y = height - (height * speedRatio) + 0
+			// canvasCtx.lineTo(x, y)
+			avgWithSpeeds[i].push(x, y)
+		}
+		return {
+			lastX,
+			lastValue,
+			maxValue: config.maxValue,
+			pixelsPerValue,
+			avgResolution,
+			avgWithSpeeds,
+			localMaxAvgSpeed,
+			maxAvgSpeed,
+			canvasWidth,
+			canvasHeight,
+		}
+	}
+}
+
+function renderStepToCanvas(config, stepList, canvasCtx, { w: canvasWidth, h: canvasHeight }, globalMaxSpeed) {
+	if (!stepList.length) return
+	const lastStep = stepList[stepList.length - 1]
+	const [, lastValue] = lastStep
+	// const maxValue = config.maxValue
+	const lastX = lastValue / config.maxValue * (canvasWidth - 1)
+
+	canvasCtx.save()
+
+	canvasCtx.clearRect(0, 0, canvasWidth, canvasHeight)
+	canvasCtx.fillStyle = '#00ff00'
+	canvasCtx.strokeStyle = '#00e000'
+	canvasCtx.lineWidth = 1
+	canvasCtx.beginPath()
+	canvasCtx.rect(0.5, 0.5, lastX, canvasHeight-1)
+	canvasCtx.fill()
+	canvasCtx.stroke()
+
+	if (lastX) {
+		const pixelsPerValue = lastValue ? lastX / lastValue : 0
+		// With this, we should get the resolution of 1px per datapoint
+		const avgResolution = lastValue / lastX
+		const avgWithSpeeds = calcSeriesSpeedsAtEachInterval(
+			calcSeriesAverage(
+				stepList,
+				avgResolution, // resolution,
+				avgResolution, // averageValue,
+				getValueOfSeriesItem,
+				getTimeOfSeriesItem,
+				createSeriesItemInverted,
+			).avg,
+			SERIES_TIME_UNIT.INTERVAL,
+		)
+		let hasZeroTime = false
+		const infiniteFactor = 2 // how much more space infinite speed (0 time) gets compared to max speed
+		const localMaxAvgSpeed = avgWithSpeeds.reduce((max, [time,,speed]) => {
+			if (time === 0 || !Number.isFinite(speed)) {
+				hasZeroTime = true // that's infinite speed
+				return max
+			}
+			return Math.max(max, speed)
+		}, 0)
+		const resolvedMaxSpeed = (
+			typeof globalMaxSpeed === 'number' && globalMaxSpeed > 0
+				? globalMaxSpeed
+				: localMaxAvgSpeed
+		) || 1
+		const maxAvgSpeed = resolvedMaxSpeed * (hasZeroTime ? infiniteFactor : 1)
+
+		canvasCtx.save()
+		canvasCtx.beginPath()
+		let x = 0.5
+		let y = canvasHeight - 0.5
+		const height = canvasHeight - 1
+		canvasCtx.moveTo(x, y)
+		for (let i = 0, c = avgWithSpeeds.length; i < c; i++) {
+			const [time, value, speed] = avgWithSpeeds[i]
+			const valuePx = pixelsPerValue ? value * pixelsPerValue : 0
+			x += valuePx
+			let speedRatio = time === 0 ? 1
+				: Math.min(1, speed / maxAvgSpeed)
+			y = height - (height * speedRatio) + 0.5
+			canvasCtx.lineTo(x, y)
+		}
+		canvasCtx.lineTo(x, canvasHeight - 0.5)
+		canvasCtx.closePath()
+		canvasCtx.fillStyle = '#008000'
+		canvasCtx.fill()
+		// canvasCtx.strokeStyle = '#e00000'
+		// canvasCtx.stroke()
+		canvasCtx.restore()
+
+	}
+
+	canvasCtx.restore()
+}
+
 const simplerApi = {
 	rand,
 	numSort,
@@ -454,6 +597,8 @@ const simplerApi = {
 	printAvgFullInfoList,
 	printAverageHole,
 	printAverage,
+	calcAverageSpeedsForResolution,
+	renderStepToCanvas,
 	SERIES_TIME_UNIT,
 };
 

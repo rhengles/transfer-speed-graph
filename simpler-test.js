@@ -14,6 +14,8 @@ const {
 	calcSeriesSpeedsAtEachInterval,
 	SERIES_TIME_UNIT,
 	convertSeriesAccumulatedToDeltas,
+	renderStepToCanvas,
+	calcAverageSpeedsForResolution,
 } = require('./simpler.js')
 const { createCanvas } = require('canvas')
 
@@ -61,104 +63,58 @@ function getSnapshotAverage(label, series, resolution, averageValue, getValue, g
 	return { avg, avgPrint }
 }
 
-function renderStepToCanvas(config, stepList, canvasCtx, offsetY, globalMaxSpeed) {
-	if (!stepList.length) return
-	const lastStep = stepList[stepList.length - 1]
-	const [lastTime, lastValue] = lastStep
-	// const maxValue = config.maxValue
-	const lastX = lastValue / config.maxValue * (CANVAS_WIDTH - 1)
-
-	canvasCtx.save()
-
-	canvasCtx.translate(0, offsetY)
-	canvasCtx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
-	canvasCtx.fillStyle = '#00ff00'
-	canvasCtx.strokeStyle = '#00e000'
-	canvasCtx.lineWidth = 1
-	canvasCtx.beginPath()
-	canvasCtx.rect(0.5, 0.5, lastX, CANVAS_HEIGHT-1)
-	canvasCtx.fill()
-	canvasCtx.stroke()
-
-	if (lastX) {
-		const pixelsPerValue = lastValue ? lastX / lastValue : 0
-		// With this, we should get the resolution of 1px per datapoint
-		const avgResolution = lastValue / lastX
-		const avgWithSpeeds = calcSeriesSpeedsAtEachInterval(
-			calcSeriesAverage(
-				stepList,
-				avgResolution, // resolution,
-				avgResolution, // averageValue,
-				getValueOfSeriesItem,
-				getTimeOfSeriesItem,
-				createSeriesItemInverted,
-			).avg,
-			SERIES_TIME_UNIT.INTERVAL,
+function getSnapshotAverageSpeedsAtResolution(seriesConfig, series, { w: canvasWidth, h: canvasHeight }) {
+	const avgSpeedsPerStep = []
+	let lastResolutionEnd = 0
+	let prevResolutionEnd = 0
+	series.forEach((_, index) => {
+		const stepList = series.slice(0, index + 1)
+		const avgResult = calcAverageSpeedsForResolution(
+			seriesConfig,
+			stepList,
+			{ w: canvasWidth, h: canvasHeight },
 		)
-		let hasZeroTime = false
-		const infiniteFactor = 2 // how much more space infinite speed (0 time) gets compared to max speed
-		const localMaxAvgSpeed = avgWithSpeeds.reduce((max, [time,,speed]) => {
-			if (time === 0 || !Number.isFinite(speed)) {
-				hasZeroTime = true // that's infinite speed
-				return max
-			}
-			return Math.max(max, speed)
-		}, 0)
-		const resolvedMaxSpeed = (
-			typeof globalMaxSpeed === 'number' && globalMaxSpeed > 0
-				? globalMaxSpeed
-				: localMaxAvgSpeed
-		) || 1
-		const maxAvgSpeed = resolvedMaxSpeed * (hasZeroTime ? infiniteFactor : 1)
-
-		canvasCtx.save()
-		canvasCtx.beginPath()
-		let x = 0.5
-		let y = CANVAS_HEIGHT - 0.5
-		canvasCtx.moveTo(x, y)
-		for (let i = 0, c = avgWithSpeeds.length; i < c; i++) {
-			const [time, value, speed] = avgWithSpeeds[i]
-			const valuePx = pixelsPerValue ? value * pixelsPerValue : 0
-			x += valuePx
-			const height = CANVAS_HEIGHT - 1
-			let speedRatio = speed / maxAvgSpeed
-			if (speedRatio > 1) speedRatio = 1
-			if (time === 0) speedRatio = 1
-			y = height - (height * speedRatio) + 0.5
-			canvasCtx.lineTo(x, y)
+		if (avgResult) {
+			const {avgWithSpeeds, ...avgSpeedsForStep} = avgResult
+			avgSpeedsPerStep.push({
+				...avgSpeedsForStep,
+				index,
+				avgWithSpeeds: printSeries(avgWithSpeeds.slice(lastResolutionEnd)),
+				avgWithSpeedsPrev: printSeries(avgWithSpeeds.slice(prevResolutionEnd, lastResolutionEnd)),
+			})
+			prevResolutionEnd = lastResolutionEnd
+			lastResolutionEnd = avgWithSpeeds.length
+		} else {
+			avgSpeedsPerStep.push(null)
 		}
-		canvasCtx.lineTo(x, CANVAS_HEIGHT - 0.5)
-		canvasCtx.closePath()
-		canvasCtx.fillStyle = '#008000'
-		canvasCtx.fill()
-		// canvasCtx.strokeStyle = '#e00000'
-		// canvasCtx.stroke()
-		canvasCtx.restore()
-
-	}
-
-	canvasCtx.restore()
+	})
+	return avgSpeedsPerStep
 }
 
 function renderSnapshotToCanvas(snapshot) {
 	const canvas = createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT * snapshot.series.length)
 	const ctx = canvas.getContext('2d')
-	const globalMaxSpeed = snapshot.series.reduce((max, [,,speed]) => {
-		if (!Number.isFinite(speed)) return max
-		return Math.max(max, speed)
-	}, 0)
+	// const globalMaxSpeed = snapshot.series.reduce((max, [,,speed]) => {
+	// 	if (!Number.isFinite(speed)) return max
+	// 	return Math.max(max, speed)
+	// }, 0)
 	// const seriesSpeeds = calcSeriesSpeedsAtEachInterval(snapshot.series)
+
 	snapshot.series.forEach((_, index) => {
 		const offsetY = index * CANVAS_HEIGHT
 		const stepList = snapshot.series.slice(0, index + 1)
+		ctx.save()
+		ctx.translate(0, offsetY)
 		renderStepToCanvas(
 			snapshot.seriesConfig,
 			stepList,
 			ctx,
-			offsetY,
-			globalMaxSpeed,
+			{ w: CANVAS_WIDTH, h: CANVAS_HEIGHT },
+			// globalMaxSpeed,
 		)
+		ctx.restore()
 	})
+
 	return canvas
 }
 
@@ -333,6 +289,12 @@ const snapshot = withSeededRandom(RNG_SEED, () => {
 		getTimeOfSeriesItem,
 		createSeriesItemInverted,
 	).avgPrint
+
+	data.averageSpeedsAtResolution = getSnapshotAverageSpeedsAtResolution(
+		seriesConfig,
+		series,
+		{ w: CANVAS_WIDTH, h: CANVAS_HEIGHT },
+	)
 
 	return data
 })

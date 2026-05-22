@@ -3,7 +3,7 @@ const libCtx = (typeof module !== 'undefined' && module.exports)
 	? require('./lib.js')
 	: (typeof window !== 'undefined' ? window : {})
 
-const bytesSize = libCtx.bytesSize
+const bytesSizeFn = libCtx.bytesSize
 
 const fnFallback = (fn, fallback) => fn instanceof Function ? fn : fallback
 const isNr = nr => 'number' === typeof nr && !isNaN(nr) && isFinite(nr)
@@ -114,7 +114,7 @@ function createRenderGraph(opt) {
 			ct.stroke()
 			ct.textAlign = 'right'
 			ct.textBaseline = 'top'
-			ct.fillText(bytesSize((iLine + 1) * speedLineMultiple).join(' ').concat('/s'), cw - 5, y - lineHeight + 3)
+			ct.fillText(bytesSizeFn((iLine + 1) * speedLineMultiple).join(' ').concat('/s'), cw - 5, y - lineHeight + 3)
 		}
 
 		for (let iLine = 0; iLine <= vertLinesCount; iLine += 1) {
@@ -170,7 +170,7 @@ function createRenderGraphAvg(opt) {
 		const size = sr.getSize()
 
 		updateSpeedLines()
-		// console.log(`lineMultiple maxSpeed: ${bytesSize(maxSpeed).join(' ')}, multiple ${bytesSize(maxSpeedMultiple).join(' ')}, maxLines ${maxLinesCount}, lineMult ${bytesSize(lineMultiple).join(' ')}, lineCount ${lineCount}`)
+		// console.log(`lineMultiple maxSpeed: ${bytesSizeFn(maxSpeed).join(' ')}, multiple ${bytesSizeFn(maxSpeedMultiple).join(' ')}, maxLines ${maxLinesCount}, lineMult ${bytesSizeFn(lineMultiple).join(' ')}, lineCount ${lineCount}`)
 		const lineHeight = (ch - 1) / speedLineCount
 		const lineWidth = (cw - 1) / vertLinesCount
 
@@ -221,7 +221,7 @@ function createRenderGraphAvg(opt) {
 			ct.stroke()
 			ct.textAlign = 'right'
 			ct.textBaseline = 'top'
-			ct.fillText(bytesSize((iLine + 1) * speedLineMultiple).join(' ').concat('/s'), cw - 5, y - lineHeight + 3)
+			ct.fillText(bytesSizeFn((iLine + 1) * speedLineMultiple).join(' ').concat('/s'), cw - 5, y - lineHeight + 3)
 		}
 
 		for (let iLine = 0; iLine <= vertLinesCount; iLine += 1) {
