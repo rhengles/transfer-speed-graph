@@ -323,6 +323,8 @@
   var frameRepeatCurrent = 1
   var frameCurrent       = minFrame
   var rngFn              = Math.random
+  var simulationMode     = 'random'
+  var logicalElapsedMs   = 0
 
   // ── DOM refs ───────────────────────────────────────────────────────────────
   var canvas    = document.getElementById('graph-canvas')
@@ -368,6 +370,7 @@
   }
 
   function setSimulationMode(mode) {
+    simulationMode = mode === 'deterministic' ? 'deterministic' : 'random'
     if (mode === 'deterministic') {
       rngFn = createSeededRandom(0xC0FFEE)
     } else {
@@ -392,9 +395,19 @@
 
   function elapsed() {
     if (!started) return 0
+    if (simulationMode === 'deterministic') {
+      return logicalElapsedMs
+    }
     var base = Date.now() - startTime - pausedDuration
     if (paused) base = pausedAt - startTime - pausedDuration
     return Math.max(0, base)
+  }
+
+  function scheduleTick() {
+    var nextFrame = randFrame()
+    tickTimer = setTimeout(function () {
+      tick(nextFrame)
+    }, nextFrame)
   }
 
   function speedLabel(series) {
@@ -509,8 +522,12 @@
   }
 
   // ── tick: advance simulation ───────────────────────────────────────────────
-  function tick() {
+  function tick(frameMs) {
     if (paused || finished) return
+
+    if (simulationMode === 'deterministic') {
+      logicalElapsedMs += Math.max(0, Math.round(frameMs || 0))
+    }
 
     var size = randSizeInc()
     transfPos = Math.min(TOTAL_SIZE, transfPos + size)
@@ -529,7 +546,7 @@
       return
     }
 
-    tickTimer = setTimeout(tick, randFrame())
+    scheduleTick()
   }
 
   // ── start / pause / resume ─────────────────────────────────────────────────
@@ -537,10 +554,14 @@
     if (started || finished) return
     started   = true
     startTime = Date.now()
+    logicalElapsedMs = 0
+    frameRepeatIdx = 1
+    frameRepeatCurrent = 1
+    frameCurrent = minFrame
     startModeControls.style.display = 'none'
     btnPause.style.opacity = '1'
     btnPause.style.pointerEvents = 'auto'
-    tickTimer = setTimeout(tick, randFrame())
+    scheduleTick()
   }
 
   function startTransferWithMode(mode) {
@@ -553,10 +574,12 @@
     if (!started || finished) return
     if (paused) {
       // resume
-      pausedDuration += Date.now() - pausedAt
+      if (simulationMode !== 'deterministic') {
+        pausedDuration += Date.now() - pausedAt
+      }
       paused = false
       btnPause.textContent = '⏸'
-      tickTimer = setTimeout(tick, randFrame())
+      scheduleTick()
     } else {
       // pause
       paused  = true

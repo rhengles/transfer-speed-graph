@@ -464,6 +464,10 @@ function applyRollingAverageToSpeedSeries(avgWithSpeeds, pixelAverageWindow) {
 	return smoothed
 }
 
+function isZeroLikeTime(time, epsilon = 1e-6) {
+	return !Number.isFinite(time) || Math.abs(time) <= epsilon
+}
+
 function resolveGraphMaxSpeed(localMaxAvgSpeed, previousMaxSpeed, renderOptions) {
 	const localMax = Number.isFinite(localMaxAvgSpeed) && localMaxAvgSpeed > 0
 		? localMaxAvgSpeed
@@ -508,9 +512,11 @@ function calcAverageSpeedsForResolution(config, stepList, { w: canvasWidth, h: c
 		const pixelAverageWindow = clampPixelAverageWindow(renderOptions?.pixelAverageWindow, canvasWidth)
 		const avgWithSpeedsSmoothed = applyRollingAverageToSpeedSeries(avgWithSpeeds, pixelAverageWindow)
 		let hasZeroTime = false
-		const infiniteFactor = 2 // how much more space infinite speed (0 time) gets compared to max speed
+		const zeroLikeTimeEpsilon = Number.isFinite(renderOptions?.zeroLikeTimeEpsilon) && renderOptions.zeroLikeTimeEpsilon > 0
+			? renderOptions.zeroLikeTimeEpsilon
+			: 1e-6
 		const localMaxAvgSpeed = avgWithSpeedsSmoothed.reduce((max, [time,,speed]) => {
-			if (time === 0 || !Number.isFinite(speed)) {
+			if (isZeroLikeTime(time, zeroLikeTimeEpsilon) || !Number.isFinite(speed)) {
 				hasZeroTime = true // that's infinite speed
 				return max
 			}
@@ -521,7 +527,7 @@ function calcAverageSpeedsForResolution(config, stepList, { w: canvasWidth, h: c
 		// 		? globalMaxSpeed
 		// 		: localMaxAvgSpeed
 		// ) || 1
-		const maxAvgSpeed = localMaxAvgSpeed * (hasZeroTime ? infiniteFactor : 1)
+		const maxAvgSpeed = localMaxAvgSpeed || 1
 		const height = canvasHeight - 1
 		let x = 0
 		let y = height
@@ -530,7 +536,7 @@ function calcAverageSpeedsForResolution(config, stepList, { w: canvasWidth, h: c
 			const [time, value, speed] = avgWithSpeedsSmoothed[i]
 			const valuePx = pixelsPerValue ? value * pixelsPerValue : 0
 			x += valuePx
-			let speedRatio = time === 0 ? 1
+			let speedRatio = isZeroLikeTime(time, zeroLikeTimeEpsilon) ? 1
 				: Math.min(1, speed / maxAvgSpeed)
 			y = height - (height * speedRatio) + 0
 			// canvasCtx.lineTo(x, y)
@@ -594,15 +600,13 @@ function renderStepToCanvas(config, stepList, canvasCtx, { w: canvasWidth, h: ca
 			avgWithSpeeds,
 			pixelsPerValue,
 			localMaxAvgSpeed,
-			hasZeroTime,
 		} = avgResult
-		const infiniteFactor = 2 // how much more space infinite speed (0 time) gets compared to max speed
 		const resolvedMaxSpeed = (
 			typeof globalMaxSpeed === 'number' && globalMaxSpeed > 0
 				? globalMaxSpeed
 				: localMaxAvgSpeed
 		) || 1
-		const maxAvgSpeed = resolvedMaxSpeed * (hasZeroTime ? infiniteFactor : 1)
+		const maxAvgSpeed = resolvedMaxSpeed
 
 		canvasCtx.save()
 		canvasCtx.beginPath()
@@ -614,7 +618,7 @@ function renderStepToCanvas(config, stepList, canvasCtx, { w: canvasWidth, h: ca
 			const [time, value, speed] = avgWithSpeeds[i]
 			const valuePx = pixelsPerValue ? value * pixelsPerValue : 0
 			x += valuePx
-			let speedRatio = time === 0 ? 1
+			let speedRatio = isZeroLikeTime(time, 1e-6) ? 1
 				: Math.min(1, speed / maxAvgSpeed)
 			y = height - (height * speedRatio) + 0.5
 			canvasCtx.lineTo(x, y)

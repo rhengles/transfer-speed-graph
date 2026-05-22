@@ -25,7 +25,76 @@ const CANVAS_HEIGHT = 120
 const SNAPSHOT_DIR = path.join(__dirname, 'snapshots')
 const SNAPSHOT_FILE = path.join(SNAPSHOT_DIR, 'simpler.json')
 const SNAPSHOT_IMAGE = path.join(SNAPSHOT_DIR, 'simpler.png')
+const SNAPSHOT_PROGRESS_IMAGE = path.join(SNAPSHOT_DIR, 'simpler-progress-5pct.png')
 const RNG_SEED = 0xC0FFEE
+
+const UI_MIN_FRAME = 20
+const UI_MAX_FRAME = 3020
+const UI_MIN_REPEAT = 1
+const UI_MAX_REPEAT = 6
+const UI_MIN_SIZE_INC = 8
+const UI_MAX_SIZE_INC = 1024 * 1024 + 8
+const UI_TOTAL_SIZE = 256 * 1024 * 1024
+
+function buildDeterministicTransferSeries({
+	totalSize = UI_TOTAL_SIZE,
+	minFrame = UI_MIN_FRAME,
+	maxFrame = UI_MAX_FRAME,
+	minRepeat = UI_MIN_REPEAT,
+	maxRepeat = UI_MAX_REPEAT,
+	minSizeInc = UI_MIN_SIZE_INC,
+	maxSizeInc = UI_MAX_SIZE_INC,
+} = {}) {
+	const series = [[0, 0]]
+	let elapsed = 0
+	let transferred = 0
+	let frameRepeatIdx = 1
+	let frameRepeatCurrent = 1
+	let frameCurrent = minFrame
+
+	function getRand(min, max) {
+		return Math.random() * (max - min) + min
+	}
+
+	function randFrame() {
+		if (frameRepeatIdx < frameRepeatCurrent) {
+			frameRepeatIdx += 1
+		} else {
+			frameCurrent = getRand(minFrame, maxFrame)
+			frameRepeatIdx = 0
+			frameRepeatCurrent = getRand(minRepeat, maxRepeat)
+		}
+		return frameCurrent
+	}
+
+	function randSizeInc() {
+		return getRand(minSizeInc, maxSizeInc)
+	}
+
+	while (transferred < totalSize) {
+		const frameMs = Math.max(0, Math.round(randFrame()))
+		elapsed += frameMs
+		transferred = Math.min(totalSize, transferred + randSizeInc())
+		series.push([elapsed, transferred])
+	}
+
+	return {
+		series,
+		config: { maxValue: totalSize },
+	}
+}
+
+function pickSeriesIndexesByProgress(series, maxValue, progressList) {
+	return progressList.map(progress => {
+		const targetValue = maxValue * progress
+		for (let index = 0, count = series.length; index < count; index++) {
+			if (series[index][1] >= targetValue) {
+				return index
+			}
+		}
+		return series.length - 1
+	})
+}
 
 function createSeededRandom(seed) {
 	let state = seed >>> 0
@@ -129,6 +198,37 @@ function renderSnapshotToCanvas(snapshot) {
 
 	return canvas
 }
+
+function renderProgressMilestoneSnapshotToCanvas(seriesConfig, series, progressList) {
+	const canvas = createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT * progressList.length)
+	const ctx = canvas.getContext('2d')
+	const milestoneIndexes = pickSeriesIndexesByProgress(series, seriesConfig.maxValue, progressList)
+
+	milestoneIndexes.forEach((stepIndex, rowIndex) => {
+		const offsetY = rowIndex * CANVAS_HEIGHT
+		const stepList = series.slice(0, stepIndex + 1)
+		const progressPct = Math.round(progressList[rowIndex] * 100)
+
+		ctx.save()
+		ctx.translate(0, offsetY)
+		renderStepToCanvas(
+			seriesConfig,
+			stepList,
+			ctx,
+			{ w: CANVAS_WIDTH, h: CANVAS_HEIGHT },
+			undefined,
+			{
+				speedLabel: `${progressPct}%`,
+				pixelAverageWindow: 1,
+			}
+		)
+		ctx.restore()
+	})
+
+	return { canvas, milestoneIndexes }
+}
+
+let progressMilestoneCanvas = null
 
 const snapshot = withSeededRandom(RNG_SEED, () => {
 	const seedHex = `0x${RNG_SEED.toString(16).toUpperCase()}`
@@ -308,6 +408,20 @@ const snapshot = withSeededRandom(RNG_SEED, () => {
 		{ w: CANVAS_WIDTH, h: CANVAS_HEIGHT },
 	)
 
+	const deterministicUi = buildDeterministicTransferSeries()
+	const progressMilestones = Array.from({ length: 20 }, (_, index) => (index + 1) * 0.05)
+	const progressSnapshot = renderProgressMilestoneSnapshotToCanvas(
+		deterministicUi.config,
+		deterministicUi.series,
+		progressMilestones,
+	)
+
+	data.deterministicUiSeries = deterministicUi.series
+	data.progressMilestones = progressMilestones
+	data.progressMilestoneIndexes = progressSnapshot.milestoneIndexes
+	data.progressMilestoneImage = path.basename(SNAPSHOT_PROGRESS_IMAGE)
+	progressMilestoneCanvas = progressSnapshot.canvas
+
 	return data
 })
 
@@ -318,3 +432,8 @@ console.log(`Saved simpler snapshot to ${SNAPSHOT_FILE}`)
 const snapshotCanvas = renderSnapshotToCanvas(snapshot)
 fs.writeFileSync(SNAPSHOT_IMAGE, snapshotCanvas.toBuffer('image/png'))
 console.log(`Saved simpler graph snapshot to ${SNAPSHOT_IMAGE}`)
+
+if (progressMilestoneCanvas) {
+	fs.writeFileSync(SNAPSHOT_PROGRESS_IMAGE, progressMilestoneCanvas.toBuffer('image/png'))
+	console.log(`Saved milestone progress snapshot to ${SNAPSHOT_PROGRESS_IMAGE}`)
+}
