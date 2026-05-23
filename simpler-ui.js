@@ -170,6 +170,7 @@
         speedLabel: speedLabel(getSeries()),
         pixelAverageWindow: pixelAverageWindow,
         ignoreTrailingSpeedSample: ignoreTrailingSpeedSample,
+        backgroundValue: controller.isFinished() ? TOTAL_SIZE : undefined,
         colorBackground: controller.isPaused() ? '#f4e499' : undefined,
         colorOverlay: controller.isPaused() ? '#b19704' : undefined,
         //gridColor: paused ? '#ebe070' : undefined,
