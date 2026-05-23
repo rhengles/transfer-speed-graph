@@ -13,6 +13,7 @@
   var pixelAverageWindow = 1
   var maxSpeedDecay = 0.500
   var maxSpeedHeadroom = 1.06
+  var ignoreTrailingSpeedSample = true
   var tickTimer     = null
   var controller = createTransferController({
     totalSize: TOTAL_SIZE,
@@ -75,8 +76,12 @@
 
   function speedLabel(series) {
     if (series.length < 2) return ''
-    var a = series[series.length - 2]
-    var b = series[series.length - 1]
+    var endIndex = series.length - 1
+    if (ignoreTrailingSpeedSample && series.length > 2) {
+      endIndex = series.length - 2
+    }
+    var a = series[endIndex - 1]
+    var b = series[endIndex]
     var dt = b[0] - a[0]
     var dv = b[1] - a[1]
     if (dt <= 0 || dv <= 0) return ''
@@ -159,10 +164,12 @@
         pixelAverageWindow: pixelAverageWindow,
         maxSpeedDecay: maxSpeedDecay,
         maxSpeedHeadroom: maxSpeedHeadroom,
+        ignoreTrailingSpeedSample: ignoreTrailingSpeedSample,
       },
       renderOptions: {
         speedLabel: speedLabel(getSeries()),
         pixelAverageWindow: pixelAverageWindow,
+        ignoreTrailingSpeedSample: ignoreTrailingSpeedSample,
         colorBackground: controller.isPaused() ? '#f4e499' : undefined,
         colorOverlay: controller.isPaused() ? '#b19704' : undefined,
         //gridColor: paused ? '#ebe070' : undefined,

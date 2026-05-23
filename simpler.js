@@ -511,17 +511,23 @@ function calcAverageSpeedsForResolution(config, stepList, { w: canvasWidth, h: c
 		)
 		const pixelAverageWindow = clampPixelAverageWindow(renderOptions?.pixelAverageWindow, canvasWidth)
 		const avgWithSpeedsSmoothed = applyRollingAverageToSpeedSeries(avgWithSpeeds, pixelAverageWindow)
+		const ignoreTrailingSpeedSample = renderOptions?.ignoreTrailingSpeedSample === true
+		const renderPointCount = ignoreTrailingSpeedSample && avgWithSpeedsSmoothed.length > 1
+			? avgWithSpeedsSmoothed.length - 1
+			: avgWithSpeedsSmoothed.length
 		let hasZeroTime = false
 		const zeroLikeTimeEpsilon = Number.isFinite(renderOptions?.zeroLikeTimeEpsilon) && renderOptions.zeroLikeTimeEpsilon > 0
 			? renderOptions.zeroLikeTimeEpsilon
 			: 1e-6
-		const localMaxAvgSpeed = avgWithSpeedsSmoothed.reduce((max, [time,,speed]) => {
+		let localMaxAvgSpeed = 0
+		for (let i = 0; i < renderPointCount; i++) {
+			const [time,,speed] = avgWithSpeedsSmoothed[i]
 			if (isZeroLikeTime(time, zeroLikeTimeEpsilon) || !Number.isFinite(speed)) {
-				hasZeroTime = true // that's infinite speed
-				return max
+				hasZeroTime = true
+				continue
 			}
-			return Math.max(max, speed)
-		}, 0)
+			localMaxAvgSpeed = Math.max(localMaxAvgSpeed, speed)
+		}
 		// const resolvedMaxSpeed = (
 		// 	typeof globalMaxSpeed === 'number' && globalMaxSpeed > 0
 		// 		? globalMaxSpeed
@@ -549,6 +555,8 @@ function calcAverageSpeedsForResolution(config, stepList, { w: canvasWidth, h: c
 			pixelsPerValue,
 			avgResolution,
 			avgWithSpeeds: avgWithSpeedsSmoothed,
+			renderPointCount,
+			ignoreTrailingSpeedSample,
 			localMaxAvgSpeed,
 			maxAvgSpeed,
 			hasZeroTime,
@@ -571,6 +579,7 @@ function renderStepToCanvas(config, stepList, canvasCtx, { w: canvasWidth, h: ca
 		speedLabel = '',
 		speedLabelColor = 'rgba(0,0,0,0.75)',
 		speedGuideColor = 'rgba(0,0,0,0.7)',
+		ignoreTrailingSpeedSample = true,
 	} = renderOptions || {}
 	if (!stepList.length) return
 	const lastStep = stepList[stepList.length - 1]
@@ -617,10 +626,11 @@ function renderStepToCanvas(config, stepList, canvasCtx, { w: canvasWidth, h: ca
 			config,
 			stepList,
 			{ w: canvasWidth, h: canvasHeight },
-			renderOptions,
+			Object.assign({}, renderOptions, { ignoreTrailingSpeedSample }),
 		)
 		const {
 			avgWithSpeeds,
+			renderPointCount,
 			pixelsPerValue,
 			localMaxAvgSpeed,
 		} = avgResult
@@ -638,7 +648,7 @@ function renderStepToCanvas(config, stepList, canvasCtx, { w: canvasWidth, h: ca
 		const endX = Math.min(canvasWidth - 0.5, Math.max(0.5, lastX + 0.5))
 		const height = canvasHeight - 1
 		canvasCtx.moveTo(x, y)
-		for (let i = 0, c = avgWithSpeeds.length; i < c; i++) {
+		for (let i = 0, c = renderPointCount; i < c; i++) {
 			const [time, value, speed] = avgWithSpeeds[i]
 			const valuePx = pixelsPerValue ? value * pixelsPerValue : 0
 			x += valuePx

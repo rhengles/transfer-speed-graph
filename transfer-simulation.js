@@ -333,6 +333,7 @@
 		if (manageMaxSpeed && series.length > 1) {
 			var avgResult = calcAverageSpeedsForResolution(seriesConfig, series, size, {
 				pixelAverageWindow: graphOptions.pixelAverageWindow,
+				ignoreTrailingSpeedSample: graphOptions.ignoreTrailingSpeedSample !== false,
 			})
 			if (avgResult && avgResult.localMaxAvgSpeed > 0) {
 				nextRunningMax = resolveGraphMaxSpeed(avgResult.localMaxAvgSpeed, nextRunningMax, {
