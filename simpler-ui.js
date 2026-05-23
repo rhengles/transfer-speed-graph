@@ -277,6 +277,9 @@
     onProgress: function (ev) {
       app.pushProgress(ev)
     },
+    onSeriesReplace: function (ev) {
+      app.replaceRenderedSeries(ev)
+    },
     onFinish: function (ev) {
       app.finishTransfer(ev)
     },

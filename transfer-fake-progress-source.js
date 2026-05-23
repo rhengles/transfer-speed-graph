@@ -17,6 +17,7 @@
 
     var onStart = typeof opts.onStart === 'function' ? opts.onStart : function () {}
     var onProgress = typeof opts.onProgress === 'function' ? opts.onProgress : function () {}
+    var onSeriesReplace = typeof opts.onSeriesReplace === 'function' ? opts.onSeriesReplace : function () {}
     var onFinish = typeof opts.onFinish === 'function' ? opts.onFinish : function () {}
     var onCancel = typeof opts.onCancel === 'function' ? opts.onCancel : function () {}
     var onPauseState = typeof opts.onPauseState === 'function' ? opts.onPauseState : function () {}
@@ -46,6 +47,21 @@
       var selectedSeries = controller.getSeries(seriesAverageActiveIndex, true)
       if (!selectedSeries || !selectedSeries.length) return 0
       return selectedSeries[selectedSeries.length - 1][1]
+    }
+
+    function getActiveSeriesPoints() {
+      if (!controller) return [[0, 0]]
+      var selectedSeries = controller.getSeries(seriesAverageActiveIndex, true)
+      if (!selectedSeries || !selectedSeries.length) return [[0, 0]]
+
+      var points = []
+      for (var i = 0; i < selectedSeries.length; i += 1) {
+        var row = selectedSeries[i]
+        if (!Array.isArray(row) || row.length < 2) continue
+        points.push([row[0], row[1]])
+      }
+
+      return points.length ? points : [[0, 0]]
     }
 
     function clearTimer() {
@@ -117,10 +133,11 @@
 
       // If fake transfer is active, immediately re-render from selected series.
       if (controller && controller.isStarted()) {
-        onProgress({
-          transferredBytes: getActiveTransferredBytes(),
+        onSeriesReplace({
+          series: getActiveSeriesPoints(),
           totalSize: controller.getTotalSize(),
           elapsedMs: controller.getElapsed(now()),
+          finished: controller.isFinished(),
           nowMs: now(),
         })
       }

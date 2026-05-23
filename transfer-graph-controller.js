@@ -118,6 +118,40 @@
       series.push([nextElapsed, nextTransferred])
     }
 
+    function normalizeSeriesPoints(inputSeries) {
+      if (!Array.isArray(inputSeries) || !inputSeries.length) {
+        return [[0, 0]]
+      }
+
+      var normalized = []
+      for (var i = 0; i < inputSeries.length; i += 1) {
+        var point = inputSeries[i]
+        if (!Array.isArray(point) || point.length < 2) continue
+
+        var rawElapsed = Number(point[0])
+        var rawTransferred = Number(point[1])
+        if (!Number.isFinite(rawElapsed) || !Number.isFinite(rawTransferred)) continue
+
+        var elapsed = Math.max(0, Math.round(rawElapsed))
+        var transferred = Math.max(0, Math.min(totalSize, rawTransferred))
+
+        var prev = normalized.length ? normalized[normalized.length - 1] : null
+        if (prev) {
+          if (elapsed < prev[0]) elapsed = prev[0]
+          if (transferred < prev[1]) transferred = prev[1]
+          if (elapsed === prev[0] && transferred === prev[1]) continue
+        }
+
+        normalized.push([elapsed, transferred])
+      }
+
+      if (!normalized.length) return [[0, 0]]
+      if (normalized[0][0] > 0 || normalized[0][1] > 0) {
+        normalized.unshift([0, 0])
+      }
+      return normalized
+    }
+
     function buildViewModel(frameResult) {
       var transferredBytes = series[series.length - 1][1]
       var pct = totalSize > 0 ? transferredBytes / totalSize : 0
@@ -248,6 +282,39 @@
       renderFrame()
     }
 
+    function replaceRenderedSeries(update) {
+      var payload = update || {}
+      var nextNow = Number.isFinite(payload.nowMs) ? payload.nowMs : now()
+
+      if (!started) {
+        startTransfer({ totalSize: payload.totalSize, nowMs: nextNow })
+      }
+
+      if (Number.isFinite(payload.totalSize) && payload.totalSize > 0 && payload.totalSize !== totalSize) {
+        totalSize = payload.totalSize
+        seriesConfig.maxValue = totalSize
+      }
+
+      if (Number.isFinite(payload.elapsedMs)) {
+        startedAt = nextNow - Math.max(0, Math.round(payload.elapsedMs)) - pausedDuration
+        if (paused) pausedAt = nextNow
+      }
+
+      series = normalizeSeriesPoints(payload.series)
+
+      if (typeof payload.finished === 'boolean') {
+        finished = payload.finished
+      } else {
+        finished = series[series.length - 1][1] >= totalSize
+      }
+
+      if (finished) paused = false
+      cancelled = false
+
+      notifyState()
+      renderFrame()
+    }
+
     function finishTransfer(update) {
       var payload = update || {}
       if (Number.isFinite(payload.totalSize) && payload.totalSize > 0) {
@@ -343,6 +410,7 @@
       reset: reset,
       startTransfer: startTransfer,
       pushProgress: pushProgress,
+      replaceRenderedSeries: replaceRenderedSeries,
       finishTransfer: finishTransfer,
       cancel: cancel,
       pause: pause,
