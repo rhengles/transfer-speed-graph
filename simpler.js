@@ -575,7 +575,10 @@ function renderStepToCanvas(config, stepList, canvasCtx, { w: canvasWidth, h: ca
 	if (!stepList.length) return
 	const lastStep = stepList[stepList.length - 1]
 	const [, lastValue] = lastStep
-	const lastX = lastValue / config.maxValue * (canvasWidth - 1)
+	const backgroundValue = Number.isFinite(renderOptions?.backgroundValue)
+		? Math.min(config.maxValue, Math.max(0, renderOptions.backgroundValue))
+		: lastValue
+	const lastX = backgroundValue / config.maxValue * (canvasWidth - 1)
 	let currentSpeedY = undefined
 
 	canvasCtx.save()
@@ -632,6 +635,7 @@ function renderStepToCanvas(config, stepList, canvasCtx, { w: canvasWidth, h: ca
 		canvasCtx.beginPath()
 		let x = 0.5
 		let y = canvasHeight - 0.5
+		const endX = Math.min(canvasWidth - 0.5, Math.max(0.5, lastX + 0.5))
 		const height = canvasHeight - 1
 		canvasCtx.moveTo(x, y)
 		for (let i = 0, c = avgWithSpeeds.length; i < c; i++) {
@@ -642,6 +646,11 @@ function renderStepToCanvas(config, stepList, canvasCtx, { w: canvasWidth, h: ca
 				: Math.min(1, speed / maxAvgSpeed)
 			y = height - (height * speedRatio) + 0.5
 			canvasCtx.lineTo(x, y)
+		}
+		// Keep the last measured speed until the filled progress width ends.
+		if (x < endX) {
+			canvasCtx.lineTo(endX, y)
+			x = endX
 		}
 		currentSpeedY = y
 		canvasCtx.lineTo(x, canvasHeight - 0.5)

@@ -14,10 +14,15 @@ const {
 	calcSeriesSpeedsAtEachInterval,
 	SERIES_TIME_UNIT,
 	convertSeriesAccumulatedToDeltas,
-	renderStepToCanvas,
 	calcAverageSpeedsForResolution,
-	resolveGraphMaxSpeed,
 } = require('./simpler.js')
+const {
+	buildDeterministicTransferSeries,
+	TRANSFER_UI_DEFAULTS,
+	clampSeriesIndex,
+	createSeededRandom,
+	renderTransferGraphFrame,
+} = require('./transfer-simulation.js')
 const { createCanvas } = require('canvas')
 
 const CANVAS_WIDTH = 600
@@ -26,62 +31,27 @@ const SNAPSHOT_DIR = path.join(__dirname, 'snapshots')
 const SNAPSHOT_FILE = path.join(SNAPSHOT_DIR, 'simpler.json')
 const SNAPSHOT_IMAGE = path.join(SNAPSHOT_DIR, 'simpler.png')
 const SNAPSHOT_PROGRESS_IMAGE = path.join(SNAPSHOT_DIR, 'simpler-progress-5pct.png')
+const SNAPSHOT_PROGRESS_IMAGE_SERIES_16 = path.join(SNAPSHOT_DIR, 'simpler-progress-5pct-series16.png')
 const RNG_SEED = 0xC0FFEE
 
-const UI_MIN_FRAME = 20
-const UI_MAX_FRAME = 3020
-const UI_MIN_REPEAT = 1
-const UI_MAX_REPEAT = 6
-const UI_MIN_SIZE_INC = 8
-const UI_MAX_SIZE_INC = 1024 * 1024 + 8
-const UI_TOTAL_SIZE = 256 * 1024 * 1024
+const UI_TOTAL_SIZE = TRANSFER_UI_DEFAULTS.totalSize
+const UI_SERIES_COUNT = TRANSFER_UI_DEFAULTS.seriesCount
 
-function buildDeterministicTransferSeries({
-	totalSize = UI_TOTAL_SIZE,
-	minFrame = UI_MIN_FRAME,
-	maxFrame = UI_MAX_FRAME,
-	minRepeat = UI_MIN_REPEAT,
-	maxRepeat = UI_MAX_REPEAT,
-	minSizeInc = UI_MIN_SIZE_INC,
-	maxSizeInc = UI_MAX_SIZE_INC,
-} = {}) {
-	const series = [[0, 0]]
-	let elapsed = 0
-	let transferred = 0
-	let frameRepeatIdx = 1
-	let frameRepeatCurrent = 1
-	let frameCurrent = minFrame
+function parseSeriesIndex(value) {
+	if (value === undefined || value === null || value === '') return undefined
+	const parsed = Number(value)
+	if (!Number.isFinite(parsed)) return undefined
+	return Math.floor(parsed)
+}
 
-	function getRand(min, max) {
-		return Math.random() * (max - min) + min
-	}
-
-	function randFrame() {
-		if (frameRepeatIdx < frameRepeatCurrent) {
-			frameRepeatIdx += 1
-		} else {
-			frameCurrent = getRand(minFrame, maxFrame)
-			frameRepeatIdx = 0
-			frameRepeatCurrent = getRand(minRepeat, maxRepeat)
-		}
-		return frameCurrent
-	}
-
-	function randSizeInc() {
-		return getRand(minSizeInc, maxSizeInc)
-	}
-
-	while (transferred < totalSize) {
-		const frameMs = Math.max(0, Math.round(randFrame()))
-		elapsed += frameMs
-		transferred = Math.min(totalSize, transferred + randSizeInc())
-		series.push([elapsed, transferred])
-	}
-
-	return {
-		series,
-		config: { maxValue: totalSize },
-	}
+function resolveUiSeriesIndex(seriesCount) {
+	const cliArg = process.argv.find((entry) => /^--series-index=/.test(entry))
+	const cliValue = cliArg ? cliArg.split('=').slice(1).join('=') : undefined
+	const envValue = process.env.UI_SERIES_INDEX
+	const requested = parseSeriesIndex(cliValue)
+		?? parseSeriesIndex(envValue)
+		?? 0
+	return clampSeriesIndex(requested, seriesCount, false)
 }
 
 function pickSeriesIndexesByProgress(series, maxValue, progressList) {
@@ -94,14 +64,6 @@ function pickSeriesIndexesByProgress(series, maxValue, progressList) {
 		}
 		return series.length - 1
 	})
-}
-
-function createSeededRandom(seed) {
-	let state = seed >>> 0
-	return function random() {
-		state = (state * 1664525 + 1013904223) >>> 0
-		return state / 0x100000000
-	}
 }
 
 function withSeededRandom(seed, fn) {
@@ -170,29 +132,17 @@ function renderSnapshotToCanvas(snapshot) {
 		const offsetY = index * CANVAS_HEIGHT
 		const stepList = snapshot.series.slice(0, index + 1)
 
-		// Update the running max speed so the Y scale only ever grows (never rescales down)
-		const avgResult = calcAverageSpeedsForResolution(
-			snapshot.seriesConfig,
-			stepList,
-			{ w: CANVAS_WIDTH, h: CANVAS_HEIGHT },
-		)
-		if (avgResult && avgResult.localMaxAvgSpeed > 0) {
-			runningMaxSpeed = resolveGraphMaxSpeed(
-				avgResult.localMaxAvgSpeed,
-				runningMaxSpeed,
-				{ maxSpeedDecay: 0.965, maxSpeedHeadroom: 1.06 }
-			)
-		}
-
 		ctx.save()
 		ctx.translate(0, offsetY)
-		renderStepToCanvas(
-			snapshot.seriesConfig,
-			stepList,
+		runningMaxSpeed = renderTransferGraphFrame({
+			seriesConfig: snapshot.seriesConfig,
+			series: stepList,
 			ctx,
-			{ w: CANVAS_WIDTH, h: CANVAS_HEIGHT },
-			runningMaxSpeed || undefined,
-		)
+			size: { w: CANVAS_WIDTH, h: CANVAS_HEIGHT },
+			runningMaxSpeed,
+			graphOptions: { maxSpeedDecay: 0.965, maxSpeedHeadroom: 1.06, pixelAverageWindow: 1 },
+			renderOptions: { pixelAverageWindow: 1 },
+		})
 		ctx.restore()
 	})
 
@@ -211,17 +161,19 @@ function renderProgressMilestoneSnapshotToCanvas(seriesConfig, series, progressL
 
 		ctx.save()
 		ctx.translate(0, offsetY)
-		renderStepToCanvas(
+		renderTransferGraphFrame({
 			seriesConfig,
-			stepList,
+			series: stepList,
 			ctx,
-			{ w: CANVAS_WIDTH, h: CANVAS_HEIGHT },
-			undefined,
-			{
+			size: { w: CANVAS_WIDTH, h: CANVAS_HEIGHT },
+			runningMaxSpeed: 0,
+			manageMaxSpeed: false,
+			renderOptions: {
 				speedLabel: `${progressPct}%`,
 				pixelAverageWindow: 1,
-			}
-		)
+				backgroundValue: progressPct >= 100 ? seriesConfig.maxValue : undefined,
+			},
+		})
 		ctx.restore()
 	})
 
@@ -229,6 +181,7 @@ function renderProgressMilestoneSnapshotToCanvas(seriesConfig, series, progressL
 }
 
 let progressMilestoneCanvas = null
+let progressMilestoneCanvasSeries16 = null
 
 const snapshot = withSeededRandom(RNG_SEED, () => {
 	const seedHex = `0x${RNG_SEED.toString(16).toUpperCase()}`
@@ -408,19 +361,42 @@ const snapshot = withSeededRandom(RNG_SEED, () => {
 		{ w: CANVAS_WIDTH, h: CANVAS_HEIGHT },
 	)
 
-	const deterministicUi = buildDeterministicTransferSeries()
+	const deterministicUi = buildDeterministicTransferSeries({
+		totalSize: UI_TOTAL_SIZE,
+		deterministicSeed: RNG_SEED,
+		seriesCount: UI_SERIES_COUNT,
+		seriesIndex: resolveUiSeriesIndex(UI_SERIES_COUNT),
+	})
+	console.log(`Using UI deterministic series index ${deterministicUi.selectedSeriesIndex + 1}/${UI_SERIES_COUNT}`)
 	const progressMilestones = Array.from({ length: 20 }, (_, index) => (index + 1) * 0.05)
 	const progressSnapshot = renderProgressMilestoneSnapshotToCanvas(
 		deterministicUi.config,
 		deterministicUi.series,
 		progressMilestones,
 	)
+	const deterministicUiSeries16 = buildDeterministicTransferSeries({
+		totalSize: UI_TOTAL_SIZE,
+		deterministicSeed: RNG_SEED,
+		seriesCount: UI_SERIES_COUNT,
+		seriesIndex: UI_SERIES_COUNT - 1,
+	})
+	const progressSnapshotSeries16 = renderProgressMilestoneSnapshotToCanvas(
+		deterministicUiSeries16.config,
+		deterministicUiSeries16.series,
+		progressMilestones,
+	)
 
 	data.deterministicUiSeries = deterministicUi.series
+	data.deterministicUiSeriesIndex = deterministicUi.selectedSeriesIndex
+	data.deterministicUiSeriesCount = UI_SERIES_COUNT
+	data.deterministicUiSeries16Index = deterministicUiSeries16.selectedSeriesIndex
 	data.progressMilestones = progressMilestones
 	data.progressMilestoneIndexes = progressSnapshot.milestoneIndexes
 	data.progressMilestoneImage = path.basename(SNAPSHOT_PROGRESS_IMAGE)
+	data.progressMilestoneSeries16Indexes = progressSnapshotSeries16.milestoneIndexes
+	data.progressMilestoneSeries16Image = path.basename(SNAPSHOT_PROGRESS_IMAGE_SERIES_16)
 	progressMilestoneCanvas = progressSnapshot.canvas
+	progressMilestoneCanvasSeries16 = progressSnapshotSeries16.canvas
 
 	return data
 })
@@ -436,4 +412,9 @@ console.log(`Saved simpler graph snapshot to ${SNAPSHOT_IMAGE}`)
 if (progressMilestoneCanvas) {
 	fs.writeFileSync(SNAPSHOT_PROGRESS_IMAGE, progressMilestoneCanvas.toBuffer('image/png'))
 	console.log(`Saved milestone progress snapshot to ${SNAPSHOT_PROGRESS_IMAGE}`)
+}
+
+if (progressMilestoneCanvasSeries16) {
+	fs.writeFileSync(SNAPSHOT_PROGRESS_IMAGE_SERIES_16, progressMilestoneCanvasSeries16.toBuffer('image/png'))
+	console.log(`Saved milestone progress snapshot (series 16/16) to ${SNAPSHOT_PROGRESS_IMAGE_SERIES_16}`)
 }
