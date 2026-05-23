@@ -402,6 +402,7 @@
 
   toggleBtn.addEventListener('click', function () {
     var open = detailsPanel.classList.toggle('visible')
+    detailsPanel.style.display = open ? 'block' : 'none'
     toggleArrow.classList.toggle('open', open)
     toggleBtn.childNodes[2].nodeValue = open ? ' Fewer details' : ' More details'
   })

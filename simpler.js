@@ -578,6 +578,7 @@ function renderStepToCanvas(config, stepList, canvasCtx, { w: canvasWidth, h: ca
 		borderColor = 'rgba(0,0,0,0.25)',
 		speedLabel = '',
 		speedLabelColor = 'rgba(0,0,0,0.75)',
+		speedLabelBackgroundColor = 'rgba(255,255,255,0)',
 		speedGuideColor = 'rgba(0,0,0,0.7)',
 		ignoreTrailingSpeedSample = true,
 	} = renderOptions || {}
@@ -694,7 +695,7 @@ function renderStepToCanvas(config, stepList, canvasCtx, { w: canvasWidth, h: ca
 		canvasCtx.lineTo(canvasWidth - 3.5, guideY)
 		canvasCtx.stroke()
 
-		canvasCtx.fillStyle = 'rgba(255,255,255,0.92)'
+		canvasCtx.fillStyle = speedLabelBackgroundColor
 		canvasCtx.fillRect(
 			labelLeftX,
 			labelTopY,
