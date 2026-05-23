@@ -325,6 +325,7 @@
 		var manageMaxSpeed = args.manageMaxSpeed !== false
 		var recalculateMaxFromZero = args.recalculateMaxFromZero === true
 		var nextRunningMax = Number.isFinite(runningMaxSpeed) ? runningMaxSpeed : 0
+		var lastRenderedSpeed = undefined
 
 		if (recalculateMaxFromZero) {
 			nextRunningMax = 0
@@ -335,12 +336,27 @@
 				pixelAverageWindow: graphOptions.pixelAverageWindow,
 				ignoreTrailingSpeedSample: graphOptions.ignoreTrailingSpeedSample !== false,
 			})
-			if (avgResult && avgResult.localMaxAvgSpeed > 0) {
+				if (avgResult && avgResult.localMaxAvgSpeed > 0) {
 				nextRunningMax = resolveGraphMaxSpeed(avgResult.localMaxAvgSpeed, nextRunningMax, {
 					maxSpeedDecay: graphOptions.maxSpeedDecay,
 					maxSpeedHeadroom: graphOptions.maxSpeedHeadroom,
 				})
 			}
+			if (avgResult && avgResult.renderPointCount > 0) {
+				lastRenderedSpeed = avgResult.avgWithSpeeds[avgResult.renderPointCount - 1][2]
+			}
+		}
+
+		var finalRenderOptions = renderOptions
+		if (
+			typeof renderOptions.speedLabelFormatter === 'function' &&
+			!renderOptions.speedLabel &&
+			typeof lastRenderedSpeed === 'number' &&
+			Number.isFinite(lastRenderedSpeed)
+		) {
+			finalRenderOptions = Object.assign({}, renderOptions, {
+				speedLabel: renderOptions.speedLabelFormatter(lastRenderedSpeed)
+			})
 		}
 
 		renderStepToCanvas(
@@ -349,10 +365,10 @@
 			ctx,
 			size,
 			manageMaxSpeed ? (nextRunningMax || undefined) : undefined,
-			renderOptions
+			finalRenderOptions
 		)
 
-		return nextRunningMax
+		return { runningMaxSpeed: nextRunningMax, lastRenderedSpeed: lastRenderedSpeed }
 	}
 
 	var transferSimulationApi = {

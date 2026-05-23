@@ -153,7 +153,7 @@
     var transferredBytes = controller.getTransferredBytes()
     var pct = TOTAL_SIZE > 0 ? transferredBytes / TOTAL_SIZE : 0
 
-    runningMaxSpeed = renderTransferGraphFrame({
+    var frameResult = renderTransferGraphFrame({
       seriesConfig: seriesConfig,
       series: getSeries(),
       ctx: ctx,
@@ -167,7 +167,7 @@
         ignoreTrailingSpeedSample: ignoreTrailingSpeedSample,
       },
       renderOptions: {
-        speedLabel: speedLabel(getSeries()),
+        speedLabelFormatter: function(speed) { return bytesSize(speed * 1000).join(' ') + '/s' },
         pixelAverageWindow: pixelAverageWindow,
         ignoreTrailingSpeedSample: ignoreTrailingSpeedSample,
         backgroundValue: controller.isFinished() ? TOTAL_SIZE : undefined,
@@ -176,6 +176,7 @@
         //gridColor: paused ? '#ebe070' : undefined,
       },
     })
+    runningMaxSpeed = frameResult.runningMaxSpeed
 
     var pctInt = Math.round(pct * 100)
     pctLabel.textContent = pctInt + '% complete'
@@ -190,7 +191,9 @@
       : 'Calculating...'
     var remBytes = TOTAL_SIZE - transferredBytes
     statItems.textContent = '1 (' + bytesSize(remBytes).join(' ') + ')'
-    statSpeed.textContent = speedLabel(getSeries())
+    statSpeed.textContent = (typeof frameResult.lastRenderedSpeed === 'number' && Number.isFinite(frameResult.lastRenderedSpeed))
+      ? bytesSize(frameResult.lastRenderedSpeed * 1000).join(' ') + '/s'
+      : ''
     statElapsed.textContent = printTime(elMs)
     statTransferred.textContent = bytesSize(transferredBytes).join(' ') + ' / ' + bytesSize(TOTAL_SIZE).join(' ')
   }

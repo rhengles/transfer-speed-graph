@@ -142,7 +142,7 @@ function renderSnapshotToCanvas(snapshot) {
 			runningMaxSpeed,
 			graphOptions: { maxSpeedDecay: 0.965, maxSpeedHeadroom: 1.06, pixelAverageWindow: 1 },
 			renderOptions: { pixelAverageWindow: 1 },
-		})
+		}).runningMaxSpeed
 		ctx.restore()
 	})
 
