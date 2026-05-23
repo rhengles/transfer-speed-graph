@@ -33,6 +33,12 @@
   var startModeControls = document.getElementById('start-mode-controls')
   var btnStartRandom = document.getElementById('btn-start-random')
   var btnStartDeterministic = document.getElementById('btn-start-deterministic')
+  var btnStartDownload = document.getElementById('btn-start-download')
+  var btnStartUpload = document.getElementById('btn-start-upload')
+  var inputDownloadUrl = document.getElementById('input-download-url')
+  var inputDownloadSize = document.getElementById('input-download-size')
+  var inputUploadUrl = document.getElementById('input-upload-url')
+  var inputUploadSize = document.getElementById('input-upload-size')
   var btnPause = document.getElementById('btn-pause')
   var btnCancel = document.getElementById('btn-cancel')
   var toggleBtn = document.getElementById('toggle-details')
@@ -87,6 +93,38 @@
     startModeControls.style.display = state.started ? 'none' : ''
   }
 
+  var activeNetworkAbort = null
+  var activeMode = 'idle'
+
+  function parsePositiveInt(value, fallback) {
+    var parsed = parseInt(value, 10)
+    if (!Number.isFinite(parsed) || parsed <= 0) return fallback
+    return parsed
+  }
+
+  function getEndpointConfig() {
+    var defaultDownloadUrl = 'https://httpbin.org/bytes/12582912?seed=2026'
+    var defaultUploadUrl = 'https://httpbin.org/post'
+    var defaultDownloadSize = 12 * 1024 * 1024
+    var defaultUploadSize = 10 * 1024 * 1024
+    return {
+      downloadUrl: inputDownloadUrl && inputDownloadUrl.value.trim() ? inputDownloadUrl.value.trim() : defaultDownloadUrl,
+      uploadUrl: inputUploadUrl && inputUploadUrl.value.trim() ? inputUploadUrl.value.trim() : defaultUploadUrl,
+      downloadSize: parsePositiveInt(inputDownloadSize && inputDownloadSize.value, defaultDownloadSize),
+      uploadSize: parsePositiveInt(inputUploadSize && inputUploadSize.value, defaultUploadSize),
+    }
+  }
+
+  function stopActiveSource() {
+    if (fakeSource.isActive()) {
+      fakeSource.cancel()
+    }
+    if (activeNetworkAbort) {
+      activeNetworkAbort.abort()
+      activeNetworkAbort = null
+    }
+  }
+
   var app = transferGraphControllerApi.createTransferGraphController({
     ctx: ctx,
     canvasWidth: CANVAS_W,
@@ -99,6 +137,133 @@
     onStateChange: applyStateView,
   })
 
+  var fakeSource = transferFakeProgressSourceApi.createFakeProgressSource({
+    totalSize: TOTAL_SIZE,
+    seriesCount: SERIES_COUNT,
+    onStart: function (ev) {
+      app.startTransfer({ totalSize: ev.totalSize, nowMs: ev.nowMs })
+      activeMode = ev.mode
+    },
+    onProgress: function (ev) {
+      app.pushProgress(ev)
+    },
+    onFinish: function (ev) {
+      app.finishTransfer(ev)
+    },
+    onCancel: function () {
+      app.cancel()
+      activeMode = 'idle'
+    },
+    onPauseState: function (isPaused) {
+      if (isPaused) app.pause()
+      else app.resume()
+    },
+  })
+
+  function startFake(mode) {
+    stopActiveSource()
+    fakeSource.start(mode)
+  }
+
+  function startRealDownloadExample() {
+    stopActiveSource()
+    activeMode = 'download'
+
+    var endpoint = getEndpointConfig()
+
+    var abortController = new AbortController()
+    activeNetworkAbort = abortController
+
+    var url = endpoint.downloadUrl
+    var startedNow = Date.now()
+    app.startTransfer({ totalSize: endpoint.downloadSize, nowMs: startedNow })
+
+    fetch(url, { signal: abortController.signal }).then(function (res) {
+      if (!res.ok || !res.body) {
+        throw new Error('Download failed: ' + res.status)
+      }
+
+      var totalHeader = parseInt(res.headers.get('content-length') || '0', 10)
+      var totalSize = Number.isFinite(totalHeader) && totalHeader > 0
+        ? totalHeader
+        : endpoint.downloadSize
+
+      var reader = res.body.getReader()
+      var loaded = 0
+
+      function pump() {
+        return reader.read().then(function (chunk) {
+          if (chunk.done) {
+            app.finishTransfer({ transferredBytes: loaded, totalSize: totalSize, nowMs: Date.now() })
+            activeNetworkAbort = null
+            return
+          }
+          loaded += chunk.value.byteLength
+          app.pushProgress({ transferredBytes: loaded, totalSize: totalSize, nowMs: Date.now() })
+          return pump()
+        })
+      }
+
+      return pump()
+    }).catch(function (err) {
+      if (abortController.signal.aborted) return
+      console.warn('Real download example failed:', err)
+      app.cancel()
+      activeNetworkAbort = null
+      activeMode = 'idle'
+    })
+  }
+
+  function startRealUploadExample() {
+    stopActiveSource()
+    activeMode = 'upload'
+
+    var endpoint = getEndpointConfig()
+
+    var xhr = new XMLHttpRequest()
+    var payloadSize = endpoint.uploadSize
+    var payload = new Blob([new Uint8Array(payloadSize)])
+    var startedNow = Date.now()
+
+    app.startTransfer({ totalSize: payloadSize, nowMs: startedNow })
+
+    activeNetworkAbort = {
+      abort: function () {
+        xhr.abort()
+      }
+    }
+
+    xhr.upload.addEventListener('progress', function (ev) {
+      if (!ev.lengthComputable) return
+      app.pushProgress({
+        transferredBytes: ev.loaded,
+        totalSize: ev.total,
+        nowMs: Date.now(),
+      })
+    })
+
+    xhr.addEventListener('load', function () {
+      app.finishTransfer({ transferredBytes: payloadSize, totalSize: payloadSize, nowMs: Date.now() })
+      activeNetworkAbort = null
+    })
+
+    xhr.addEventListener('error', function () {
+      console.warn('Real upload example failed')
+      app.cancel()
+      activeNetworkAbort = null
+      activeMode = 'idle'
+    })
+
+    xhr.addEventListener('abort', function () {
+      app.cancel()
+      activeNetworkAbort = null
+      activeMode = 'idle'
+    })
+
+    xhr.open('POST', endpoint.uploadUrl)
+    xhr.send(payload)
+  }
+
   toggleBtn.addEventListener('click', function () {
     var open = detailsPanel.classList.toggle('visible')
     toggleArrow.classList.toggle('open', open)
@@ -106,20 +271,42 @@
   })
 
   btnPause.addEventListener('click', function () {
-    app.togglePause()
+    if (fakeSource.isActive()) {
+      fakeSource.togglePause()
+      return
+    }
+
+    var state = app.getState()
+    if (state.finished) {
+      app.toggleFinishedPauseVisual()
+    }
   })
 
   btnCancel.addEventListener('click', function () {
+    stopActiveSource()
     app.cancel()
+    activeMode = 'idle'
   })
 
   btnStartRandom.addEventListener('click', function () {
-    app.start('random')
+    startFake('random')
   })
 
   btnStartDeterministic.addEventListener('click', function () {
-    app.start('deterministic')
+    startFake('deterministic')
   })
+
+  if (btnStartDownload) {
+    btnStartDownload.addEventListener('click', function () {
+      startRealDownloadExample()
+    })
+  }
+
+  if (btnStartUpload) {
+    btnStartUpload.addEventListener('click', function () {
+      startRealUploadExample()
+    })
+  }
 
   btnSeriesAvgActiveDown.addEventListener('click', function () {
     app.setSeriesAverageActiveIndex(app.getControlsView().seriesActiveIndex - 1)
@@ -158,7 +345,9 @@
   })
 
   document.getElementById('btn-close-title').addEventListener('click', function () {
+    stopActiveSource()
     app.cancel()
+    activeMode = 'idle'
   })
 
   app.renderFrame()

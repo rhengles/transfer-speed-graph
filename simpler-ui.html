@@ -130,6 +130,42 @@
     background: #e7e7e7;
   }
 
+  .endpoint-config {
+    border: 1px solid #d7d7d7;
+    background: #fafafa;
+    padding: 8px;
+    border-radius: 3px;
+    margin: 0 0 10px;
+    font-size: 11px;
+    color: #333;
+  }
+  .endpoint-config h4 {
+    font-size: 11px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .endpoint-row {
+    display: grid;
+    grid-template-columns: 88px 1fr;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+  .endpoint-row:last-child {
+    margin-bottom: 0;
+  }
+  .endpoint-row label {
+    color: #555;
+  }
+  .endpoint-row input {
+    width: 100%;
+    border: 1px solid #b8b8b8;
+    border-radius: 2px;
+    padding: 2px 5px;
+    font-size: 11px;
+    height: 22px;
+  }
+
   /* graph */
   .graph-wrap {
     position: relative;
@@ -239,6 +275,28 @@
     <div class="start-mode" id="start-mode-controls">
       <button id="btn-start-random" title="Start with random simulation">Iniciar aleatório</button>
       <button id="btn-start-deterministic" title="Start with deterministic simulation">Iniciar determinístico</button>
+      <button id="btn-start-download" title="Start real download demo">Download real</button>
+      <button id="btn-start-upload" title="Start real upload demo">Upload real</button>
+    </div>
+
+    <div class="endpoint-config">
+      <h4>Endpoint config</h4>
+      <div class="endpoint-row">
+        <label for="input-download-url">Download URL</label>
+        <input id="input-download-url" type="text" value="https://httpbin.org/bytes/12582912?seed=2026">
+      </div>
+      <div class="endpoint-row">
+        <label for="input-download-size">Download bytes</label>
+        <input id="input-download-size" type="number" min="1" step="1" value="12582912">
+      </div>
+      <div class="endpoint-row">
+        <label for="input-upload-url">Upload URL</label>
+        <input id="input-upload-url" type="text" value="https://httpbin.org/post">
+      </div>
+      <div class="endpoint-row">
+        <label for="input-upload-size">Upload bytes</label>
+        <input id="input-upload-size" type="number" min="1" step="1" value="10485760">
+      </div>
     </div>
 
     <!-- Graph -->
@@ -298,6 +356,7 @@
 <script src="simpler.js"></script>
 <script src="transfer-simulation.js"></script>
 <script src="transfer-graph-controller.js"></script>
+<script src="transfer-fake-progress-source.js"></script>
 <script src="simpler-ui.js"></script>
 </body>
 </html>

@@ -5,7 +5,6 @@
     root.transferGraphControllerApi = factory(root, root)
   }
 })(typeof globalThis !== 'undefined' ? globalThis : this, function (simulationDeps, formatDeps) {
-  var createTransferController = simulationDeps.createTransferController
   var renderTransferGraphFrame = simulationDeps.renderTransferGraphFrame
   var clampSeriesIndex = simulationDeps.clampSeriesIndex
   var TRANSFER_UI_DEFAULTS = simulationDeps.TRANSFER_UI_DEFAULTS || { totalSize: 256 * 1024 * 1024, seriesCount: 16 }
@@ -22,13 +21,9 @@
     var totalSize = Number.isFinite(opts.totalSize) && opts.totalSize > 0
       ? opts.totalSize
       : TRANSFER_UI_DEFAULTS.totalSize
-    var seriesCount = Math.max(1, Math.floor(opts.seriesCount || TRANSFER_UI_DEFAULTS.seriesCount || 1))
     var canvasWidth = Number.isFinite(opts.canvasWidth) ? Math.floor(opts.canvasWidth) : 416
     var canvasHeight = Number.isFinite(opts.canvasHeight) ? Math.floor(opts.canvasHeight) : 72
     var now = typeof opts.now === 'function' ? opts.now : Date.now
-    var schedule = typeof opts.schedule === 'function' ? opts.schedule : setTimeout
-    var unschedule = typeof opts.unschedule === 'function' ? opts.unschedule : clearTimeout
-
     var formatSpeed = typeof opts.formatSpeed === 'function'
       ? opts.formatSpeed
       : function (speedBps) { return asLabel(bytesSize(speedBps)) + '/s' }
@@ -36,9 +31,6 @@
     var onFrame = typeof opts.onFrame === 'function' ? opts.onFrame : function () {}
     var onControls = typeof opts.onControls === 'function' ? opts.onControls : function () {}
     var onStateChange = typeof opts.onStateChange === 'function' ? opts.onStateChange : function () {}
-    var onOutOfBounds = typeof opts.onOutOfBounds === 'function' ? opts.onOutOfBounds : function (seriesIndex) {
-      console.warn('Generated size out of bounds at index ' + seriesIndex)
-    }
 
     var pausedColors = Object.assign({
       background: '#f4e499',
@@ -46,41 +38,44 @@
       overlay: '#b19704',
     }, opts.pausedColors || {})
 
-    var controller = createTransferController({
-      totalSize: totalSize,
-      seriesCount: seriesCount,
-      mode: opts.mode || 'random',
-    })
-
     var seriesConfig = { maxValue: totalSize }
-    var seriesActiveIndex = clampSeriesIndex(opts.seriesActiveIndex || 1, seriesCount, true)
+    var series = [[0, 0]]
+    var runningMaxSpeed = 0
     var pixelAverageWindow = Math.max(1, Math.min(canvasWidth, Math.round(opts.pixelAverageWindow || 1)))
     var maxSpeedDecay = Number.isFinite(opts.maxSpeedDecay) ? opts.maxSpeedDecay : 0.5
     var maxSpeedHeadroom = Number.isFinite(opts.maxSpeedHeadroom) ? opts.maxSpeedHeadroom : 1.06
     var ignoreTrailingSpeedSample = opts.ignoreTrailingSpeedSample !== false
-    var runningMaxSpeed = 0
-    var finishedPauseVisual = false
+    var started = false
+    var paused = false
+    var finished = false
     var cancelled = false
-    var tickTimer = null
+    var finishedPauseVisual = false
+    var startedAt = 0
+    var pausedAt = 0
+    var pausedDuration = 0
 
-    function getSeries() {
-      return controller.getSeries(seriesActiveIndex, true)
-    }
+    var seriesActiveIndex = clampSeriesIndex(opts.seriesActiveIndex || 1, TRANSFER_UI_DEFAULTS.seriesCount, true)
 
     function isPauseVisualActive() {
-      return controller.isPaused() || (controller.isFinished() && finishedPauseVisual)
+      return paused || (finished && finishedPauseVisual)
+    }
+
+    function getElapsed(nowMs) {
+      if (!started) return 0
+      var currentNow = Number.isFinite(nowMs) ? nowMs : now()
+      if (paused) currentNow = pausedAt
+      return Math.max(0, currentNow - startedAt - pausedDuration)
     }
 
     function getState() {
       return {
-        started: controller.isStarted(),
-        paused: controller.isPaused(),
-        finished: controller.isFinished(),
+        started: started,
+        paused: paused,
+        finished: finished,
         cancelled: cancelled,
-        mode: controller.getMode(),
         pauseVisualActive: isPauseVisualActive(),
         pauseButtonLabel: isPauseVisualActive() ? '▶' : '⏸',
-        pauseButtonEnabled: controller.isStarted() && !cancelled,
+        pauseButtonEnabled: started && !cancelled,
         runningMaxSpeed: runningMaxSpeed,
         seriesActiveIndex: seriesActiveIndex,
         pixelAverageWindow: pixelAverageWindow,
@@ -93,7 +88,7 @@
     function getControlsView() {
       return {
         seriesActiveIndex: seriesActiveIndex,
-        seriesCount: seriesCount,
+        seriesCount: TRANSFER_UI_DEFAULTS.seriesCount,
         pixelAverageWindow: pixelAverageWindow,
         canvasWidth: canvasWidth,
         maxSpeedDecay: maxSpeedDecay,
@@ -101,26 +96,38 @@
       }
     }
 
-    function notifyControls() {
-      onControls(getControlsView())
-    }
-
     function notifyState() {
       onStateChange(getState())
     }
 
-    function scheduleTick() {
-      var nextFrame = controller.nextFrameMs()
-      tickTimer = schedule(function () {
-        tick(nextFrame)
-      }, nextFrame)
+    function notifyControls() {
+      onControls(getControlsView())
+    }
+
+    function resetSeries() {
+      series = [[0, 0]]
+      runningMaxSpeed = 0
+    }
+
+    function appendSeriesPoint(elapsedMs, transferredBytes) {
+      var nextElapsed = Math.max(0, Math.round(elapsedMs || 0))
+      var nextTransferred = Math.max(0, Math.min(totalSize, transferredBytes || 0))
+      var prev = series[series.length - 1]
+      if (prev && prev[0] === nextElapsed && prev[1] === nextTransferred) return
+      if (prev && nextElapsed < prev[0]) {
+        nextElapsed = prev[0]
+      }
+      if (prev && nextTransferred < prev[1]) {
+        nextTransferred = prev[1]
+      }
+      series.push([nextElapsed, nextTransferred])
     }
 
     function buildViewModel(frameResult) {
-      var transferredBytes = controller.getTransferredBytes()
+      var transferredBytes = series[series.length - 1][1]
       var pct = totalSize > 0 ? transferredBytes / totalSize : 0
       var pctInt = Math.round(pct * 100)
-      var elapsedMs = controller.getElapsed(now())
+      var elapsedMs = getElapsed(now())
       var remainingMs = pct > 0 ? elapsedMs / pct * (1 - pct) : 0
       var remBytes = Math.max(0, totalSize - transferredBytes)
       var speedBps = (typeof frameResult.lastRenderedSpeed === 'number' && Number.isFinite(frameResult.lastRenderedSpeed))
@@ -137,7 +144,7 @@
         remainingMs: remainingMs,
         speedBps: speedBps,
         cancelled: cancelled,
-        finished: controller.isFinished(),
+        finished: finished,
         state: getState(),
       }
     }
@@ -154,7 +161,7 @@
         speedLabelFormatter: function (speed) { return formatSpeed(speed * 1000) },
         pixelAverageWindow: pixelAverageWindow,
         ignoreTrailingSpeedSample: ignoreTrailingSpeedSample,
-        backgroundValue: controller.isFinished() ? totalSize : undefined,
+        backgroundValue: finished ? totalSize : undefined,
         colorBackground: isPauseVisualActive() ? pausedColors.background : undefined,
         colorBackgroundStroke: isPauseVisualActive() ? pausedColors.backgroundStroke : undefined,
         colorOverlay: isPauseVisualActive() ? pausedColors.overlay : undefined,
@@ -169,7 +176,7 @@
 
       var frameResult = renderTransferGraphFrame({
         seriesConfig: seriesConfig,
-        series: getSeries(),
+        series: series,
         ctx: opts.ctx,
         size: { w: canvasWidth, h: canvasHeight },
         runningMaxSpeed: runningMaxSpeed,
@@ -184,45 +191,116 @@
       return view
     }
 
-    function tick(frameMs) {
-      var stepResult = controller.runStep({
-        frameMs: frameMs,
-        nowMs: now(),
-      })
-      if (!stepResult.advanced) return
-
-      if (stepResult.outOfBoundsIndex) {
-        onOutOfBounds(stepResult.outOfBoundsIndex - 1)
+    function startTransfer(config) {
+      var cfg = config || {}
+      if (Number.isFinite(cfg.totalSize) && cfg.totalSize > 0) {
+        totalSize = cfg.totalSize
+        seriesConfig.maxValue = totalSize
       }
 
+      started = true
+      paused = false
+      finished = false
+      cancelled = false
+      finishedPauseVisual = false
+      startedAt = Number.isFinite(cfg.nowMs) ? cfg.nowMs : now()
+      pausedAt = 0
+      pausedDuration = 0
+      resetSeries()
+      notifyState()
       renderFrame()
-
-      if (stepResult.finished) {
-        notifyState()
-        return
-      }
-
-      scheduleTick()
     }
 
-    function setSimulationMode(mode) {
-      controller.setMode(mode)
+    function pushProgress(update) {
+      var payload = update || {}
+      var nextNow = Number.isFinite(payload.nowMs) ? payload.nowMs : now()
+      if (!started) {
+        startTransfer({ totalSize: payload.totalSize, nowMs: nextNow })
+      }
+
+      if (Number.isFinite(payload.totalSize) && payload.totalSize > 0 && payload.totalSize !== totalSize) {
+        totalSize = payload.totalSize
+        seriesConfig.maxValue = totalSize
+      }
+
+      var elapsedMs = Number.isFinite(payload.elapsedMs)
+        ? payload.elapsedMs
+        : getElapsed(nextNow)
+      appendSeriesPoint(elapsedMs, payload.transferredBytes)
+
+      if (series[series.length - 1][1] >= totalSize) {
+        finished = true
+        paused = false
+      }
+
       notifyState()
+      renderFrame()
+    }
+
+    function finishTransfer(update) {
+      var payload = update || {}
+      if (Number.isFinite(payload.totalSize) && payload.totalSize > 0) {
+        totalSize = payload.totalSize
+        seriesConfig.maxValue = totalSize
+      }
+      if (!started) {
+        startTransfer({ totalSize: totalSize, nowMs: payload.nowMs })
+      }
+      appendSeriesPoint(
+        Number.isFinite(payload.elapsedMs) ? payload.elapsedMs : getElapsed(payload.nowMs),
+        Number.isFinite(payload.transferredBytes) ? payload.transferredBytes : totalSize
+      )
+      finished = true
+      paused = false
+      notifyState()
+      renderFrame()
+    }
+
+    function cancel() {
+      cancelled = true
+      finished = true
+      paused = false
+      notifyState()
+      renderFrame()
+    }
+
+    function pause(nowMs) {
+      if (!started || finished || paused) return
+      paused = true
+      pausedAt = Number.isFinite(nowMs) ? nowMs : now()
+      notifyState()
+      renderFrame()
+    }
+
+    function resume(nowMs) {
+      if (!started || finished || !paused) return
+      var resumeAt = Number.isFinite(nowMs) ? nowMs : now()
+      pausedDuration += Math.max(0, resumeAt - pausedAt)
+      paused = false
+      pausedAt = 0
+      notifyState()
+      renderFrame()
+    }
+
+    function toggleFinishedPauseVisual() {
+      if (!finished) return
+      finishedPauseVisual = !finishedPauseVisual
+      notifyState()
+      renderFrame()
     }
 
     function refreshGraphScale() {
-      if (getSeries().length > 1) {
+      if (series.length > 1) {
         runningMaxSpeed = 0
         renderFrame()
       }
     }
 
     function setSeriesAverageActiveIndex(nextWindow) {
-      var bounded = clampSeriesIndex(nextWindow, seriesCount, true)
+      var bounded = clampSeriesIndex(nextWindow, TRANSFER_UI_DEFAULTS.seriesCount, true)
       if (bounded === seriesActiveIndex) return
       seriesActiveIndex = bounded
       notifyControls()
-      refreshGraphScale()
     }
 
     function setPixelAverageWindow(nextWindow) {
@@ -249,54 +327,8 @@
       refreshGraphScale()
     }
 
-    function start(mode) {
-      if (mode) {
-        setSimulationMode(mode)
-      }
-      if (controller.isStarted() || controller.isFinished()) return false
-      cancelled = false
-      finishedPauseVisual = false
-      controller.start(now())
-      notifyState()
-      scheduleTick()
-      return true
-    }
-
-    function togglePause() {
-      if (!controller.isStarted()) return
-      if (controller.isFinished()) {
-        finishedPauseVisual = !finishedPauseVisual
-        notifyState()
-        renderFrame()
-        return
-      }
-
-      finishedPauseVisual = false
-      if (controller.isPaused()) {
-        controller.resume(now())
-        notifyState()
-        renderFrame()
-        if (!controller.isFinished()) {
-          scheduleTick()
-        }
-      } else {
-        controller.pause(now())
-        unschedule(tickTimer)
-        notifyState()
-        renderFrame()
-      }
-    }
-
-    function cancel() {
-      cancelled = true
-      controller.cancel()
-      unschedule(tickTimer)
-      notifyState()
-      renderFrame()
-    }
-
-    function destroy() {
-      unschedule(tickTimer)
+    function getSeries() {
+      return series.slice()
     }
 
     notifyControls()
@@ -304,11 +336,13 @@
 
     return {
       renderFrame: renderFrame,
-      start: start,
-      togglePause: togglePause,
+      startTransfer: startTransfer,
+      pushProgress: pushProgress,
+      finishTransfer: finishTransfer,
       cancel: cancel,
-      destroy: destroy,
-      setSimulationMode: setSimulationMode,
+      pause: pause,
+      resume: resume,
+      toggleFinishedPauseVisual: toggleFinishedPauseVisual,
       refreshGraphScale: refreshGraphScale,
       setSeriesAverageActiveIndex: setSeriesAverageActiveIndex,
       setPixelAverageWindow: setPixelAverageWindow,
