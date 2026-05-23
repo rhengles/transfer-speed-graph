@@ -102,6 +102,7 @@
 		var totalSize = args.totalSize || 0
 		var minSizeInc = args.minSizeInc
 		var maxSizeInc = args.maxSizeInc
+		var baseTransferred = transferredBytes
 		var lastAverage = 0
 		var outOfBoundsIndex = 0
 
@@ -111,9 +112,11 @@
 			if (!outOfBoundsIndex && (size < minSizeInc || size > maxSizeInc)) {
 				outOfBoundsIndex = i + 1
 			}
-			transferredBytes = Math.min(totalSize, transferredBytes + lastAverage)
-			seriesSeries[i].push([elapsedMs, transferredBytes])
+			var seriesTransferred = Math.min(totalSize, baseTransferred + lastAverage)
+			seriesSeries[i].push([elapsedMs, seriesTransferred])
 		}
+
+		transferredBytes = Math.min(totalSize, baseTransferred + lastAverage)
 
 		return {
 			transferredBytes: transferredBytes,
