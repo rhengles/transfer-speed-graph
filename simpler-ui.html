@@ -114,6 +114,13 @@
     gap: 8px;
     margin: 2px 0 8px;
   }
+  .start-mode-loading {
+    grid-column: 1 / -1;
+    font-size: 12px;
+    color: #555;
+    text-align: center;
+    padding: 4px 0;
+  }
   .start-mode button {
     width: 100%;
     min-width: 0;
@@ -142,6 +149,24 @@
     font-size: 11px;
     color: #333;
   }
+  .endpoint-actions {
+    margin-top: 8px;
+    display: flex;
+    justify-content: flex-end;
+  }
+  .endpoint-actions button {
+    border: 1px solid #aaa;
+    background: #f3f3f3;
+    border-radius: 3px;
+    cursor: pointer;
+    color: #111;
+    font-size: 11px;
+    padding: 4px 10px;
+    min-height: 26px;
+  }
+  .endpoint-actions button:hover {
+    background: #e7e7e7;
+  }
   .endpoint-config h4 {
     font-size: 11px;
     font-weight: 600;
@@ -167,6 +192,25 @@
     padding: 2px 5px;
     font-size: 11px;
     height: 22px;
+  }
+
+  .idle-intro {
+    margin: 4px 0 10px;
+    padding: 8px;
+    border: 1px solid #d7d7d7;
+    border-radius: 3px;
+    background: #fafafa;
+  }
+  .idle-intro h4 {
+    font-size: 13px;
+    font-weight: 600;
+    color: #222;
+    margin-bottom: 4px;
+  }
+  .idle-intro p {
+    font-size: 12px;
+    color: #444;
+    line-height: 1.4;
   }
 
   /* graph */
@@ -241,6 +285,28 @@
     line-height: 1.8;
   }
   .details-panel.visible { display: block; }
+
+  .idle-details {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid #e0e0e0;
+    font-size: 12px;
+    color: #333;
+    line-height: 1.6;
+  }
+  .idle-details p {
+    margin-bottom: 6px;
+  }
+  .idle-details ul {
+    margin: 0 0 6px 16px;
+  }
+  .idle-details a {
+    color: #0563c1;
+    text-decoration: none;
+  }
+  .idle-details a:hover {
+    text-decoration: underline;
+  }
 </style>
 </head>
 <body>
@@ -259,7 +325,7 @@
   <div class="body">
 
     <!-- Header -->
-    <div class="header-row">
+    <div class="header-row" id="transfer-header-row" style="display:none">
       <div class="file-icon">📄</div>
       <div class="header-text">
         <div class="header-desc">
@@ -270,36 +336,47 @@
     </div>
 
     <!-- Pause / Cancel -->
-    <div class="ctrl-row">
+    <div class="ctrl-row" id="transfer-ctrl-row" style="display:none">
       <div class="ctrl-btn" id="btn-pause" title="Pause">⏸</div>
       <div class="ctrl-btn" id="btn-cancel" title="Cancel">✕</div>
       <div class="ctrl-btn" id="btn-reset" title="Reset" style="display:none">↺</div>
     </div>
 
-    <div class="start-mode" id="start-mode-controls">
-      <button id="btn-start-random" title="Start with random simulation">Iniciar aleatório</button>
-      <button id="btn-start-deterministic" title="Start with deterministic simulation">Iniciar determinístico</button>
-      <button id="btn-start-download" title="Start real download demo">Download real</button>
-      <button id="btn-start-upload" title="Start real upload demo">Upload real</button>
+    <div class="idle-intro" id="idle-intro">
+      <h4>Transfer Speed Graph Playground</h4>
+      <p>
+        Explore a Windows-style file transfer speed graph with fake and real network data sources.
+      </p>
     </div>
 
-    <div class="endpoint-config">
-      <h4>Endpoint config</h4>
-      <div class="endpoint-row">
+    <div class="start-mode" id="start-mode-controls">
+      <div class="start-mode-loading" id="startup-loading">Loading...</div>
+      <button id="btn-start-random" title="Start with random simulation" style="display:none">Start random</button>
+      <button id="btn-start-deterministic" title="Start with deterministic simulation" style="display:none">Start deterministic</button>
+      <button id="btn-start-download" title="Configure real download demo" style="display:none">Real download</button>
+      <button id="btn-start-upload" title="Configure real upload demo" style="display:none">Real upload</button>
+    </div>
+
+    <div class="endpoint-config" id="endpoint-config" style="display:none">
+      <h4 id="endpoint-config-title">Endpoint config</h4>
+      <div class="endpoint-row" id="row-download-url">
         <label for="input-download-url">Download URL</label>
         <input id="input-download-url" type="text" value="https://httpbin.org/bytes/12582912?seed=2026">
       </div>
-      <div class="endpoint-row">
+      <div class="endpoint-row" id="row-download-size">
         <label for="input-download-size">Download bytes</label>
         <input id="input-download-size" type="number" min="1" step="1" value="12582912">
       </div>
-      <div class="endpoint-row">
+      <div class="endpoint-row" id="row-upload-url">
         <label for="input-upload-url">Upload URL</label>
         <input id="input-upload-url" type="text" value="https://httpbin.org/post">
       </div>
-      <div class="endpoint-row">
+      <div class="endpoint-row" id="row-upload-size">
         <label for="input-upload-size">Upload bytes</label>
         <input id="input-upload-size" type="number" min="1" step="1" value="10485760">
+      </div>
+      <div class="endpoint-actions">
+        <button id="btn-start-endpoint" title="Start transfer from configured endpoint">Start transfer</button>
       </div>
     </div>
 
@@ -308,14 +385,14 @@
       <canvas id="graph-canvas" width="416" height="72"></canvas>
     </div>
     <div class="graph-toolbar">
-      <div class="graph-toolbar-group" id="group-series-controls">
+      <div class="graph-toolbar-group" id="group-series-controls" style="display:none">
         <button id="btn-series-avg-down" title="Decrease speed random average">−</button>
-        <div class="readout">Média velocidade: <span id="series-avg-value">1</span></div>
+        <div class="readout">Speed series: <span id="series-avg-value">1</span></div>
         <button id="btn-series-avg-up" title="Increase speed random average">+</button>
       </div>
-      <div class="graph-toolbar-group" id="group-pixel-controls">
+      <div class="graph-toolbar-group" id="group-pixel-controls" style="display:none">
         <button id="btn-avg-down" title="Decrease rolling pixel average">−</button>
-        <div class="readout">Média rolante: <span id="pixel-avg-value">1 px</span></div>
+        <div class="readout">Rolling average: <span id="pixel-avg-value">1 px</span></div>
         <button id="btn-avg-up" title="Increase rolling pixel average">+</button>
       </div>
       <div class="graph-toolbar-group" id="group-maxspeed-decay" style="display:none">
@@ -334,23 +411,38 @@
     </div>
 
     <!-- Stats -->
-    <div class="stats" id="stats">
+    <div class="stats" id="stats" style="display:none">
       Name: <span id="stat-name">—</span><br>
       Time remaining: <span id="stat-time">Calculating…</span><br>
       Items remaining: <span id="stat-items">1 (256 MB)</span>
     </div>
 
     <!-- More details toggle -->
-    <div class="details-toggle" id="toggle-details">
+    <div class="details-toggle" id="toggle-details" style="display:none">
       <span class="toggle-arrow" id="toggle-arrow">⌄</span>
       More details
     </div>
 
     <!-- Extended details panel -->
-    <div class="details-panel" id="details-panel">
+    <div class="details-panel" id="details-panel" style="display:none">
       Speed: <span id="stat-speed">—</span><br>
       Elapsed: <span id="stat-elapsed">0:00.000</span><br>
       Transferred: <span id="stat-transferred">0 B</span>
+    </div>
+
+    <div class="idle-details" id="idle-details">
+      <p>
+        Repository: <a href="https://github.com/rhengles/transfer-speed-graph/" target="_blank" rel="noopener noreferrer">https://github.com/rhengles/transfer-speed-graph/</a>
+      </p>
+      <ul>
+        <li>Renders a transfer speed graph inspired by the Windows 8 file transfer dialog.</li>
+        <li>Supports deterministic and random fake transfer streams for testing visual behavior.</li>
+        <li>Supports real download and upload examples with progress-driven graph updates.</li>
+        <li>Includes rolling-average smoothing controls and reusable graph controller modules.</li>
+      </ul>
+      <p>
+        Start any mode above to switch from this project overview into the live transfer simulation view.
+      </p>
     </div>
 
   </div><!-- /body -->

@@ -17,6 +17,11 @@
   var statSpeed = document.getElementById('stat-speed')
   var statElapsed = document.getElementById('stat-elapsed')
   var statTransferred = document.getElementById('stat-transferred')
+  var stats = document.getElementById('stats')
+  var transferHeaderRow = document.getElementById('transfer-header-row')
+  var transferCtrlRow = document.getElementById('transfer-ctrl-row')
+  var idleIntro = document.getElementById('idle-intro')
+  var idleDetails = document.getElementById('idle-details')
   var seriesAvgActiveValue = document.getElementById('series-avg-value')
   var pixelAvgValue = document.getElementById('pixel-avg-value')
   var maxSpeedDecayValue = document.getElementById('max-speed-decay-value')
@@ -31,6 +36,7 @@
   var btnHeadroomUp = document.getElementById('btn-headroom-up')
   var btnRecalcScale = document.getElementById('btn-recalc-scale')
   var groupSeriesControls = document.getElementById('group-series-controls')
+  var groupPixelControls = document.getElementById('group-pixel-controls')
   var groupMaxSpeedDecay = document.getElementById('group-maxspeed-decay')
   var groupMaxSpeedHeadroom = document.getElementById('group-maxspeed-headroom')
   var groupMaxSpeedRecalc = document.getElementById('group-maxspeed-recalc')
@@ -39,10 +45,18 @@
   var btnStartDeterministic = document.getElementById('btn-start-deterministic')
   var btnStartDownload = document.getElementById('btn-start-download')
   var btnStartUpload = document.getElementById('btn-start-upload')
+  var startupLoading = document.getElementById('startup-loading')
   var inputDownloadUrl = document.getElementById('input-download-url')
   var inputDownloadSize = document.getElementById('input-download-size')
   var inputUploadUrl = document.getElementById('input-upload-url')
   var inputUploadSize = document.getElementById('input-upload-size')
+  var endpointConfig = document.getElementById('endpoint-config')
+  var endpointConfigTitle = document.getElementById('endpoint-config-title')
+  var rowDownloadUrl = document.getElementById('row-download-url')
+  var rowDownloadSize = document.getElementById('row-download-size')
+  var rowUploadUrl = document.getElementById('row-upload-url')
+  var rowUploadSize = document.getElementById('row-upload-size')
+  var btnStartEndpoint = document.getElementById('btn-start-endpoint')
   var btnPause = document.getElementById('btn-pause')
   var btnCancel = document.getElementById('btn-cancel')
   var btnReset = document.getElementById('btn-reset')
@@ -114,6 +128,22 @@
   }
 
   function applyStateView(state) {
+    if (transferHeaderRow) transferHeaderRow.style.display = state.started ? '' : 'none'
+    if (transferCtrlRow) transferCtrlRow.style.display = state.started ? 'flex' : 'none'
+    if (stats) stats.style.display = state.started ? '' : 'none'
+    if (toggleBtn) toggleBtn.style.display = state.started ? 'flex' : 'none'
+    if (!state.started && detailsPanel) {
+      detailsPanel.classList.remove('visible')
+      detailsPanel.style.display = 'none'
+      if (toggleArrow) toggleArrow.classList.remove('open')
+      if (toggleBtn && toggleBtn.childNodes[2]) {
+        toggleBtn.childNodes[2].nodeValue = ' More details'
+      }
+    }
+
+    if (idleIntro) idleIntro.style.display = state.started ? 'none' : ''
+    if (idleDetails) idleDetails.style.display = state.started ? 'none' : ''
+
     btnPause.textContent = state.pauseButtonLabel
     btnPause.style.opacity = state.pauseButtonEnabled ? '1' : '0.4'
     btnPause.style.pointerEvents = state.pauseButtonEnabled ? 'auto' : 'none'
@@ -126,6 +156,7 @@
 
   var activeNetworkAbort = null
   var activeMode = 'idle'
+  var pendingRealMode = null
 
   function isRealMode() {
     return activeMode === 'download' || activeMode === 'upload'
@@ -135,9 +166,65 @@
     if (groupMaxSpeedDecay) groupMaxSpeedDecay.style.display = 'none'
     if (groupMaxSpeedHeadroom) groupMaxSpeedHeadroom.style.display = 'none'
     if (groupMaxSpeedRecalc) groupMaxSpeedRecalc.style.display = 'none'
+
+    if (!state.started) {
+      if (groupSeriesControls) groupSeriesControls.style.display = 'none'
+      if (groupPixelControls) groupPixelControls.style.display = 'none'
+      return
+    }
+
+    if (groupPixelControls) groupPixelControls.style.display = ''
     if (groupSeriesControls) {
       groupSeriesControls.style.display = (state.started && isRealMode()) ? 'none' : ''
     }
+  }
+
+  function hideEndpointConfig() {
+    pendingRealMode = null
+    if (endpointConfig) endpointConfig.style.display = 'none'
+  }
+
+  function showEndpointConfig(mode) {
+    pendingRealMode = mode
+    if (!endpointConfig) return
+
+    endpointConfig.style.display = ''
+
+    var isDownloadMode = mode === 'download'
+    if (endpointConfigTitle) {
+      endpointConfigTitle.textContent = isDownloadMode ? 'Download endpoint config' : 'Upload endpoint config'
+    }
+
+    if (rowDownloadUrl) rowDownloadUrl.style.display = isDownloadMode ? '' : 'none'
+    if (rowDownloadSize) rowDownloadSize.style.display = 'none'
+    if (rowUploadUrl) rowUploadUrl.style.display = isDownloadMode ? 'none' : ''
+    if (rowUploadSize) rowUploadSize.style.display = isDownloadMode ? 'none' : ''
+    if (btnStartEndpoint) {
+      btnStartEndpoint.textContent = isDownloadMode ? 'Start download' : 'Start upload'
+    }
+  }
+
+  function startPendingRealMode() {
+    if (pendingRealMode === 'download') {
+      hideEndpointConfig()
+      startRealDownloadExample()
+      return
+    }
+    if (pendingRealMode === 'upload') {
+      hideEndpointConfig()
+      startRealUploadExample()
+    }
+  }
+
+  function finishStartupLoading() {
+    if (startupLoading) {
+      startupLoading.style.display = 'none'
+    }
+
+    if (btnStartRandom) btnStartRandom.style.display = ''
+    if (btnStartDeterministic) btnStartDeterministic.style.display = ''
+    if (btnStartDownload) btnStartDownload.style.display = ''
+    if (btnStartUpload) btnStartUpload.style.display = ''
   }
 
   function parsePositiveInt(value, fallback) {
@@ -206,6 +293,7 @@
 
   function startFake(mode) {
     stopActiveSource()
+    hideEndpointConfig()
     activeMode = mode
     fakeSource.start(mode)
   }
@@ -330,6 +418,7 @@
   btnCancel.addEventListener('click', function () {
     stopActiveSource()
     app.cancel()
+    hideEndpointConfig()
     activeMode = 'idle'
   })
 
@@ -337,6 +426,7 @@
     btnReset.addEventListener('click', function () {
       stopActiveSource()
       app.reset()
+      hideEndpointConfig()
       activeMode = 'idle'
     })
   }
@@ -351,13 +441,19 @@
 
   if (btnStartDownload) {
     btnStartDownload.addEventListener('click', function () {
-      startRealDownloadExample()
+      showEndpointConfig('download')
     })
   }
 
   if (btnStartUpload) {
     btnStartUpload.addEventListener('click', function () {
-      startRealUploadExample()
+      showEndpointConfig('upload')
+    })
+  }
+
+  if (btnStartEndpoint) {
+    btnStartEndpoint.addEventListener('click', function () {
+      startPendingRealMode()
     })
   }
 
@@ -400,8 +496,11 @@
   document.getElementById('btn-close-title').addEventListener('click', function () {
     stopActiveSource()
     app.cancel()
+    hideEndpointConfig()
     activeMode = 'idle'
   })
+
+  finishStartupLoading()
 
   app.renderFrame()
 
