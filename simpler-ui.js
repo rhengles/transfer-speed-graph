@@ -41,6 +41,7 @@
   var inputUploadSize = document.getElementById('input-upload-size')
   var btnPause = document.getElementById('btn-pause')
   var btnCancel = document.getElementById('btn-cancel')
+  var btnReset = document.getElementById('btn-reset')
   var toggleBtn = document.getElementById('toggle-details')
   var toggleArrow = document.getElementById('toggle-arrow')
   var detailsPanel = document.getElementById('details-panel')
@@ -91,6 +92,9 @@
     btnPause.style.opacity = state.pauseButtonEnabled ? '1' : '0.4'
     btnPause.style.pointerEvents = state.pauseButtonEnabled ? 'auto' : 'none'
     startModeControls.style.display = state.started ? 'none' : ''
+    if (btnReset) {
+      btnReset.style.display = state.started ? '' : 'none'
+    }
   }
 
   var activeNetworkAbort = null
@@ -287,6 +291,14 @@
     app.cancel()
     activeMode = 'idle'
   })
+
+  if (btnReset) {
+    btnReset.addEventListener('click', function () {
+      stopActiveSource()
+      app.reset()
+      activeMode = 'idle'
+    })
+  }
 
   btnStartRandom.addEventListener('click', function () {
     startFake('random')

@@ -18,9 +18,10 @@
 
   function createTransferGraphController(options) {
     var opts = options || {}
-    var totalSize = Number.isFinite(opts.totalSize) && opts.totalSize > 0
+    var initialTotalSize = Number.isFinite(opts.totalSize) && opts.totalSize > 0
       ? opts.totalSize
       : TRANSFER_UI_DEFAULTS.totalSize
+    var totalSize = initialTotalSize
     var canvasWidth = Number.isFinite(opts.canvasWidth) ? Math.floor(opts.canvasWidth) : 416
     var canvasHeight = Number.isFinite(opts.canvasHeight) ? Math.floor(opts.canvasHeight) : 72
     var now = typeof opts.now === 'function' ? opts.now : Date.now
@@ -211,6 +212,22 @@
       renderFrame()
     }
 
+    function reset() {
+      totalSize = initialTotalSize
+      seriesConfig.maxValue = totalSize
+      started = false
+      paused = false
+      finished = false
+      cancelled = false
+      finishedPauseVisual = false
+      startedAt = 0
+      pausedAt = 0
+      pausedDuration = 0
+      resetSeries()
+      notifyState()
+      renderFrame()
+    }
+
     function pushProgress(update) {
       var payload = update || {}
       var nextNow = Number.isFinite(payload.nowMs) ? payload.nowMs : now()
@@ -336,6 +353,7 @@
 
     return {
       renderFrame: renderFrame,
+      reset: reset,
       startTransfer: startTransfer,
       pushProgress: pushProgress,
       finishTransfer: finishTransfer,
