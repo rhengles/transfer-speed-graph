@@ -109,22 +109,25 @@
   .ctrl-btn:hover { background: #e0e0e0; }
 
   .start-mode {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
     margin: 2px 0 8px;
   }
   .start-mode button {
-    min-width: 118px;
-    height: 24px;
+    width: 100%;
+    min-width: 0;
+    min-height: 32px;
     border: 1px solid #aaa;
     background: #f3f3f3;
     border-radius: 3px;
     cursor: pointer;
     color: #111;
     font-size: 12px;
-    padding: 0 8px;
+    padding: 4px 8px;
+    white-space: normal;
+    text-align: center;
+    line-height: 1.1;
   }
   .start-mode button:hover {
     background: #e7e7e7;
@@ -305,27 +308,27 @@
       <canvas id="graph-canvas" width="416" height="72"></canvas>
     </div>
     <div class="graph-toolbar">
-      <div class="graph-toolbar-group">
+      <div class="graph-toolbar-group" id="group-series-controls">
         <button id="btn-series-avg-down" title="Decrease speed random average">−</button>
         <div class="readout">Média velocidade: <span id="series-avg-value">1</span></div>
         <button id="btn-series-avg-up" title="Increase speed random average">+</button>
       </div>
-      <div class="graph-toolbar-group">
+      <div class="graph-toolbar-group" id="group-pixel-controls">
         <button id="btn-avg-down" title="Decrease rolling pixel average">−</button>
         <div class="readout">Média rolante: <span id="pixel-avg-value">1 px</span></div>
         <button id="btn-avg-up" title="Increase rolling pixel average">+</button>
       </div>
-      <div class="graph-toolbar-group">
+      <div class="graph-toolbar-group" id="group-maxspeed-decay" style="display:none">
         <button id="btn-decay-down" title="Decrease max speed decay">−</button>
         <div class="readout">maxSpeedDecay: <span id="max-speed-decay-value">0.965</span></div>
         <button id="btn-decay-up" title="Increase max speed decay">+</button>
       </div>
-      <div class="graph-toolbar-group">
+      <div class="graph-toolbar-group" id="group-maxspeed-headroom" style="display:none">
         <button id="btn-headroom-down" title="Decrease max speed headroom">−</button>
         <div class="readout">maxSpeedHeadroom: <span id="max-speed-headroom-value">1.06</span></div>
         <button id="btn-headroom-up" title="Increase max speed headroom">+</button>
       </div>
-      <div class="graph-toolbar-group">
+      <div class="graph-toolbar-group" id="group-maxspeed-recalc" style="display:none">
         <button id="btn-recalc-scale" title="Recalculate graph scale">R</button>
       </div>
     </div>

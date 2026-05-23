@@ -30,6 +30,10 @@
   var btnHeadroomDown = document.getElementById('btn-headroom-down')
   var btnHeadroomUp = document.getElementById('btn-headroom-up')
   var btnRecalcScale = document.getElementById('btn-recalc-scale')
+  var groupSeriesControls = document.getElementById('group-series-controls')
+  var groupMaxSpeedDecay = document.getElementById('group-maxspeed-decay')
+  var groupMaxSpeedHeadroom = document.getElementById('group-maxspeed-headroom')
+  var groupMaxSpeedRecalc = document.getElementById('group-maxspeed-recalc')
   var startModeControls = document.getElementById('start-mode-controls')
   var btnStartRandom = document.getElementById('btn-start-random')
   var btnStartDeterministic = document.getElementById('btn-start-deterministic')
@@ -114,6 +118,7 @@
     btnPause.style.opacity = state.pauseButtonEnabled ? '1' : '0.4'
     btnPause.style.pointerEvents = state.pauseButtonEnabled ? 'auto' : 'none'
     startModeControls.style.display = state.started ? 'none' : ''
+    updateToolbarVisibility(state)
     if (btnReset) {
       btnReset.style.display = state.started ? '' : 'none'
     }
@@ -121,6 +126,19 @@
 
   var activeNetworkAbort = null
   var activeMode = 'idle'
+
+  function isRealMode() {
+    return activeMode === 'download' || activeMode === 'upload'
+  }
+
+  function updateToolbarVisibility(state) {
+    if (groupMaxSpeedDecay) groupMaxSpeedDecay.style.display = 'none'
+    if (groupMaxSpeedHeadroom) groupMaxSpeedHeadroom.style.display = 'none'
+    if (groupMaxSpeedRecalc) groupMaxSpeedRecalc.style.display = 'none'
+    if (groupSeriesControls) {
+      groupSeriesControls.style.display = (state.started && isRealMode()) ? 'none' : ''
+    }
+  }
 
   function parsePositiveInt(value, fallback) {
     var parsed = parseInt(value, 10)
@@ -188,6 +206,7 @@
 
   function startFake(mode) {
     stopActiveSource()
+    activeMode = mode
     fakeSource.start(mode)
   }
 
