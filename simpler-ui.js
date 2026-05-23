@@ -46,14 +46,36 @@
   var toggleArrow = document.getElementById('toggle-arrow')
   var detailsPanel = document.getElementById('details-panel')
 
-  function applyControlsView(view) {
+  var graphControlsState = {
+    pixelAverageWindow: 1,
+    canvasWidth: CANVAS_W,
+    maxSpeedDecay: 0.5,
+    maxSpeedHeadroom: 1.06,
+  }
+
+  var fakeControlsState = {
+    seriesActiveIndex: 1,
+    seriesCount: SERIES_COUNT,
+  }
+
+  function applySeriesControlsView(view) {
+    fakeControlsState.seriesActiveIndex = view.seriesActiveIndex
+    fakeControlsState.seriesCount = view.seriesCount
     seriesAvgActiveValue.textContent = view.seriesActiveIndex
+    btnSeriesAvgActiveDown.disabled = view.seriesActiveIndex <= 1
+    btnSeriesAvgActiveUp.disabled = view.seriesActiveIndex >= view.seriesCount
+  }
+
+  function applyControlsView(view) {
+    graphControlsState.pixelAverageWindow = view.pixelAverageWindow
+    graphControlsState.canvasWidth = view.canvasWidth
+    graphControlsState.maxSpeedDecay = view.maxSpeedDecay
+    graphControlsState.maxSpeedHeadroom = view.maxSpeedHeadroom
+
     pixelAvgValue.textContent = view.pixelAverageWindow + ' px / ' + view.canvasWidth
     maxSpeedDecayValue.textContent = view.maxSpeedDecay.toFixed(3)
     maxSpeedHeadroomValue.textContent = view.maxSpeedHeadroom.toFixed(2)
 
-    btnSeriesAvgActiveDown.disabled = view.seriesActiveIndex <= 1
-    btnSeriesAvgActiveUp.disabled = view.seriesActiveIndex >= view.seriesCount
     btnAvgDown.disabled = view.pixelAverageWindow <= 1
     btnAvgUp.disabled = view.pixelAverageWindow >= view.canvasWidth
     btnDecayDown.disabled = view.maxSpeedDecay <= 0.5
@@ -134,7 +156,6 @@
     canvasWidth: CANVAS_W,
     canvasHeight: CANVAS_H,
     totalSize: TOTAL_SIZE,
-    seriesCount: SERIES_COUNT,
     mode: 'random',
     onFrame: applyFrameView,
     onControls: applyControlsView,
@@ -154,6 +175,7 @@
     onFinish: function (ev) {
       app.finishTransfer(ev)
     },
+    onControls: applySeriesControlsView,
     onCancel: function () {
       app.cancel()
       activeMode = 'idle'
@@ -321,35 +343,35 @@
   }
 
   btnSeriesAvgActiveDown.addEventListener('click', function () {
-    app.setSeriesAverageActiveIndex(app.getControlsView().seriesActiveIndex - 1)
+    fakeSource.setSeriesAverageActiveIndex(fakeControlsState.seriesActiveIndex - 1)
   })
 
   btnSeriesAvgActiveUp.addEventListener('click', function () {
-    app.setSeriesAverageActiveIndex(app.getControlsView().seriesActiveIndex + 1)
+    fakeSource.setSeriesAverageActiveIndex(fakeControlsState.seriesActiveIndex + 1)
   })
 
   btnAvgDown.addEventListener('click', function () {
-    app.setPixelAverageWindow(app.getControlsView().pixelAverageWindow - 1)
+    app.setPixelAverageWindow(graphControlsState.pixelAverageWindow - 1)
   })
 
   btnAvgUp.addEventListener('click', function () {
-    app.setPixelAverageWindow(app.getControlsView().pixelAverageWindow + 1)
+    app.setPixelAverageWindow(graphControlsState.pixelAverageWindow + 1)
   })
 
   btnDecayDown.addEventListener('click', function () {
-    app.setMaxSpeedDecay(app.getControlsView().maxSpeedDecay - 0.005)
+    app.setMaxSpeedDecay(graphControlsState.maxSpeedDecay - 0.005)
   })
 
   btnDecayUp.addEventListener('click', function () {
-    app.setMaxSpeedDecay(app.getControlsView().maxSpeedDecay + 0.005)
+    app.setMaxSpeedDecay(graphControlsState.maxSpeedDecay + 0.005)
   })
 
   btnHeadroomDown.addEventListener('click', function () {
-    app.setMaxSpeedHeadroom(app.getControlsView().maxSpeedHeadroom - 0.01)
+    app.setMaxSpeedHeadroom(graphControlsState.maxSpeedHeadroom - 0.01)
   })
 
   btnHeadroomUp.addEventListener('click', function () {
-    app.setMaxSpeedHeadroom(app.getControlsView().maxSpeedHeadroom + 0.01)
+    app.setMaxSpeedHeadroom(graphControlsState.maxSpeedHeadroom + 0.01)
   })
 
   btnRecalcScale.addEventListener('click', function () {

@@ -6,6 +6,7 @@
   }
 })(typeof globalThis !== 'undefined' ? globalThis : this, function (deps) {
   var createTransferController = deps.createTransferController
+  var clampSeriesIndex = deps.clampSeriesIndex
   var TRANSFER_UI_DEFAULTS = deps.TRANSFER_UI_DEFAULTS || { totalSize: 256 * 1024 * 1024, seriesCount: 16 }
 
   function createFakeProgressSource(options) {
@@ -19,12 +20,33 @@
     var onFinish = typeof opts.onFinish === 'function' ? opts.onFinish : function () {}
     var onCancel = typeof opts.onCancel === 'function' ? opts.onCancel : function () {}
     var onPauseState = typeof opts.onPauseState === 'function' ? opts.onPauseState : function () {}
+    var onControls = typeof opts.onControls === 'function' ? opts.onControls : function () {}
     var onOutOfBounds = typeof opts.onOutOfBounds === 'function' ? opts.onOutOfBounds : function (seriesIndex) {
       console.warn('Generated size out of bounds at index ' + seriesIndex)
     }
 
+    var seriesCount = Math.max(1, Math.floor(opts.seriesCount || TRANSFER_UI_DEFAULTS.seriesCount || 1))
+    var seriesAverageActiveIndex = clampSeriesIndex(opts.seriesAverageActiveIndex || 1, seriesCount, true)
     var controller = null
     var timerId = null
+
+    function getControlsView() {
+      return {
+        seriesActiveIndex: seriesAverageActiveIndex,
+        seriesCount: seriesCount,
+      }
+    }
+
+    function notifyControls() {
+      onControls(getControlsView())
+    }
+
+    function getActiveTransferredBytes() {
+      if (!controller) return 0
+      var selectedSeries = controller.getSeries(seriesAverageActiveIndex, true)
+      if (!selectedSeries || !selectedSeries.length) return 0
+      return selectedSeries[selectedSeries.length - 1][1]
+    }
 
     function clearTimer() {
       if (timerId !== null) {
@@ -51,7 +73,7 @@
       }
 
       onProgress({
-        transferredBytes: result.transferredBytes,
+        transferredBytes: getActiveTransferredBytes(),
         totalSize: controller.getTotalSize(),
         elapsedMs: result.elapsedMs,
         nowMs: now(),
@@ -59,7 +81,7 @@
 
       if (result.finished) {
         onFinish({
-          transferredBytes: result.transferredBytes,
+          transferredBytes: getActiveTransferredBytes(),
           totalSize: controller.getTotalSize(),
           elapsedMs: result.elapsedMs,
           nowMs: now(),
@@ -74,7 +96,7 @@
       clearTimer()
       controller = createTransferController({
         totalSize: opts.totalSize || TRANSFER_UI_DEFAULTS.totalSize,
-        seriesCount: opts.seriesCount || TRANSFER_UI_DEFAULTS.seriesCount,
+        seriesCount: seriesCount,
         mode: mode || 'random',
       })
       controller.start(now())
@@ -85,6 +107,23 @@
       })
       onPauseState(false)
       scheduleTick()
+    }
+
+    function setSeriesAverageActiveIndex(nextIndex) {
+      var bounded = clampSeriesIndex(nextIndex, seriesCount, true)
+      if (bounded === seriesAverageActiveIndex) return
+      seriesAverageActiveIndex = bounded
+      notifyControls()
+
+      // If fake transfer is active, immediately re-render from selected series.
+      if (controller && controller.isStarted()) {
+        onProgress({
+          transferredBytes: getActiveTransferredBytes(),
+          totalSize: controller.getTotalSize(),
+          elapsedMs: controller.getElapsed(now()),
+          nowMs: now(),
+        })
+      }
     }
 
     function cancel() {
@@ -126,12 +165,16 @@
       return !!controller && controller.isStarted() && !controller.isFinished()
     }
 
+    notifyControls()
+
     return {
       start: start,
       cancel: cancel,
       pause: pause,
       resume: resume,
       togglePause: togglePause,
+      setSeriesAverageActiveIndex: setSeriesAverageActiveIndex,
+      getControlsView: getControlsView,
       isPaused: isPaused,
       isActive: isActive,
     }

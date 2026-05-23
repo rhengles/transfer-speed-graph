@@ -6,7 +6,6 @@
   }
 })(typeof globalThis !== 'undefined' ? globalThis : this, function (simulationDeps, formatDeps) {
   var renderTransferGraphFrame = simulationDeps.renderTransferGraphFrame
-  var clampSeriesIndex = simulationDeps.clampSeriesIndex
   var TRANSFER_UI_DEFAULTS = simulationDeps.TRANSFER_UI_DEFAULTS || { totalSize: 256 * 1024 * 1024, seriesCount: 16 }
 
   var bytesSize = formatDeps.bytesSize
@@ -55,8 +54,6 @@
     var pausedAt = 0
     var pausedDuration = 0
 
-    var seriesActiveIndex = clampSeriesIndex(opts.seriesActiveIndex || 1, TRANSFER_UI_DEFAULTS.seriesCount, true)
-
     function isPauseVisualActive() {
       return paused || (finished && finishedPauseVisual)
     }
@@ -78,7 +75,6 @@
         pauseButtonLabel: isPauseVisualActive() ? '▶' : '⏸',
         pauseButtonEnabled: started && !cancelled,
         runningMaxSpeed: runningMaxSpeed,
-        seriesActiveIndex: seriesActiveIndex,
         pixelAverageWindow: pixelAverageWindow,
         maxSpeedDecay: maxSpeedDecay,
         maxSpeedHeadroom: maxSpeedHeadroom,
@@ -88,8 +84,6 @@
 
     function getControlsView() {
       return {
-        seriesActiveIndex: seriesActiveIndex,
-        seriesCount: TRANSFER_UI_DEFAULTS.seriesCount,
         pixelAverageWindow: pixelAverageWindow,
         canvasWidth: canvasWidth,
         maxSpeedDecay: maxSpeedDecay,
@@ -313,13 +307,6 @@
       }
     }
 
-    function setSeriesAverageActiveIndex(nextWindow) {
-      var bounded = clampSeriesIndex(nextWindow, TRANSFER_UI_DEFAULTS.seriesCount, true)
-      if (bounded === seriesActiveIndex) return
-      seriesActiveIndex = bounded
-      notifyControls()
-    }
-
     function setPixelAverageWindow(nextWindow) {
       var bounded = Math.max(1, Math.min(canvasWidth, Math.round(nextWindow)))
       if (bounded === pixelAverageWindow) return
@@ -362,7 +349,6 @@
       resume: resume,
       toggleFinishedPauseVisual: toggleFinishedPauseVisual,
       refreshGraphScale: refreshGraphScale,
-      setSeriesAverageActiveIndex: setSeriesAverageActiveIndex,
       setPixelAverageWindow: setPixelAverageWindow,
       setMaxSpeedDecay: setMaxSpeedDecay,
       setMaxSpeedHeadroom: setMaxSpeedHeadroom,
