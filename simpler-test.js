@@ -1,6 +1,7 @@
-const fs = require('fs')
-const path = require('path')
-const {
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import {
 	randSeries,
 	randSegment,
 	getValueOfSeriesItem,
@@ -15,15 +16,18 @@ const {
 	SERIES_TIME_UNIT,
 	convertSeriesAccumulatedToDeltas,
 	calcAverageSpeedsForResolution,
-} = require('./simpler.js')
-const {
+} from './simpler.js'
+import {
 	buildDeterministicTransferSeries,
 	TRANSFER_UI_DEFAULTS,
 	clampSeriesIndex,
 	createSeededRandom,
 	renderTransferGraphFrame,
-} = require('./transfer-simulation.js')
-const { createCanvas } = require('canvas')
+} from './transfer-simulation.js'
+import { createCanvas } from 'canvas'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 const CANVAS_WIDTH = 600
 const CANVAS_HEIGHT = 120

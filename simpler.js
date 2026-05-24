@@ -719,7 +719,7 @@ function renderStepToCanvas(config, stepList, canvasCtx, { w: canvasWidth, h: ca
 	canvasCtx.restore()
 }
 
-const simplerApi = {
+export {
 	rand,
 	numSort,
 	randSeries,
@@ -752,10 +752,4 @@ const simplerApi = {
 	renderStepToCanvas,
 	resolveGraphMaxSpeed,
 	SERIES_TIME_UNIT,
-};
-
-if (typeof module !== 'undefined' && module.exports) {
-	module.exports = simplerApi;
-} else if (typeof window !== 'undefined') {
-	Object.assign(window, simplerApi);
 }

@@ -3,8 +3,9 @@
   "version": "0.0.0",
   "description": "-",
   "main": "project-v1/index.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node simpler-test.js",
     "v1-snapshot": "node project-v1/snapshot.js",
     "simpler": "node simpler-test.js"
   },
