@@ -1,4 +1,4 @@
-import { simpleSlider, SLIDER_HORIZONTAL, SLIDER_VERTICAL } from "./node_modules/@arijs/frontend/src/client/dom/slider.mjs";
+import { simpleSlider, SLIDER_HORIZONTAL, SLIDER_VERTICAL } from "../node_modules/@arijs/frontend/src/client/dom/slider.mjs";
 
 // SLIDER_HORIZONTAL
 

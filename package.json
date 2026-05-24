@@ -2,10 +2,10 @@
   "name": "transfer-speed",
   "version": "0.0.0",
   "description": "-",
-  "main": "index.js",
+  "main": "project-v1/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "snapshot": "node snapshot.js",
+    "v1-snapshot": "node project-v1/snapshot.js",
     "simpler": "node simpler-test.js"
   },
   "author": "rhengles@gmail.com",
