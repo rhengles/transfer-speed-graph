@@ -88,16 +88,16 @@ import { FakeProgressSource, TRANSFER_UI_DEFAULTS } from './fake/progress-source
 
   function applyControlsView(view) {
     graphControlsState.pixelAverageWindow = view.pixelAverageWindow
-    graphControlsState.canvasWidth = view.canvasWidth
+    graphControlsState.canvasWidth = CANVAS_W
     graphControlsState.maxSpeedDecay = view.maxSpeedDecay
     graphControlsState.maxSpeedHeadroom = view.maxSpeedHeadroom
 
-    pixelAvgValue.textContent = view.pixelAverageWindow + ' px / ' + view.canvasWidth
+    pixelAvgValue.textContent = view.pixelAverageWindow + ' px / ' + CANVAS_W
     maxSpeedDecayValue.textContent = view.maxSpeedDecay.toFixed(3)
     maxSpeedHeadroomValue.textContent = view.maxSpeedHeadroom.toFixed(2)
 
     btnAvgDown.disabled = view.pixelAverageWindow <= 1
-    btnAvgUp.disabled = view.pixelAverageWindow >= view.canvasWidth
+    btnAvgUp.disabled = view.pixelAverageWindow >= CANVAS_W
     btnDecayDown.disabled = view.maxSpeedDecay <= 0.5
     btnDecayUp.disabled = view.maxSpeedDecay >= 0.999
     btnHeadroomDown.disabled = view.maxSpeedHeadroom <= 1

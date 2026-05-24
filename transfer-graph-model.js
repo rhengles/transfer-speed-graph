@@ -55,7 +55,6 @@ class TransferGraphModel {
   getControlsView() {
     return {
       pixelAverageWindow: this.pixelAverageWindow,
-      canvasWidth: this.canvasWidth,
       maxSpeedDecay: this.maxSpeedDecay,
       maxSpeedHeadroom: this.maxSpeedHeadroom,
     }

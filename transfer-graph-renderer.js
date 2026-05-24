@@ -25,7 +25,7 @@ class TransferGraphRenderer {
 
   render(model) {
     const isCancelled = model.cancelled === true
-    const usePausedPalette = !isCancelled && model.isPauseVisualActive()
+    const isPaused = !isCancelled && model.isPauseVisualActive()
 
     let graphOptions = {
       pixelAverageWindow: model.pixelAverageWindow,
@@ -42,17 +42,17 @@ class TransferGraphRenderer {
       backgroundValue: model.finished && !isCancelled ? model.totalSize : undefined,
       colorBackground: isCancelled
         ? this.cancelledColors.background
-        : usePausedPalette
+        : isPaused
         ? this.pausedColors.background
         : undefined,
       colorBackgroundStroke: isCancelled
         ? this.cancelledColors.backgroundStroke
-        : usePausedPalette
+        : isPaused
         ? this.pausedColors.backgroundStroke
         : undefined,
       colorOverlay: isCancelled
         ? this.cancelledColors.overlay
-        : usePausedPalette
+        : isPaused
         ? this.pausedColors.overlay
         : undefined,
     }
