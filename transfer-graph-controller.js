@@ -11,7 +11,6 @@ class TransferGraphController {
   constructor(options) {
     const opts = options || {}
     const {
-      totalSize,
       now,
       formatSpeed,
       onFrame,
@@ -29,9 +28,6 @@ class TransferGraphController {
       ignoreTrailingSpeedSample,
     } = opts
 
-    if (!Number.isFinite(totalSize) || totalSize <= 0) {
-      throw new Error('TransferGraphController requires a positive numeric totalSize')
-    }
     this.now = typeof now === 'function' ? now : Date.now
     this.formatSpeed = typeof formatSpeed === 'function'
       ? formatSpeed
@@ -42,7 +38,6 @@ class TransferGraphController {
     this.onStateChange = typeof onStateChange === 'function' ? onStateChange : function () {}
 
     this.model = new TransferGraphModel({
-      totalSize,
       canvasWidth,
       now: this.now,
       pixelAverageWindow,
@@ -82,7 +77,11 @@ class TransferGraphController {
   }
 
   startTransfer(config) {
-    this.model.startTransfer(config)
+    const cfg = config || {}
+    if (!Number.isFinite(cfg.totalSize) || cfg.totalSize <= 0) {
+      throw new Error('TransferGraphController.startTransfer requires a positive numeric totalSize')
+    }
+    this.model.startTransfer(cfg)
     this.notifyState()
     this.renderFrame()
   }

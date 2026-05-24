@@ -269,7 +269,7 @@ import { FakeProgressSource, TRANSFER_UI_DEFAULTS } from './fake/progress-source
     canvasCtx: canvasCtx,
     canvasWidth: CANVAS_W,
     canvasHeight: CANVAS_H,
-    totalSize: TOTAL_SIZE,
+    // totalSize: TOTAL_SIZE,
     onFrame: applyFrameView,
     onControls: applyControlsView,
     onStateChange: applyStateView,
