@@ -10,6 +10,10 @@ function clampPixelAverageWindow(pixelAverageWindow, canvasWidth) {
 
 class TransferGraphRenderer {
   constructor(options) {
+    this.setOptions(options)
+  }
+
+  setOptions(options) {
     const opts = options || {}
     this.canvasCtx = opts.canvasCtx
     this.canvasWidth = Number.isFinite(opts.canvasWidth) ? Math.floor(opts.canvasWidth) : 416
