@@ -3,62 +3,39 @@ import { TransferGraphRenderer } from './transfer-graph-renderer.js'
 
 class TransferGraphController {
   constructor(options) {
-    const opts = options || {}
-    const {
-      now,
-      formatSpeed,
-      canvasCtx,
-      canvasWidth,
-      canvasHeight,
-      pausedRenderOptions,
-      cancelledRenderOptions,
-      buildGraphOptions,
-      buildRenderOptions,
-      pixelAverageWindow,
-      maxSpeedDecay,
-      maxSpeedHeadroom,
-      ignoreTrailingSpeedSample,
-    } = opts
+    this.model = new TransferGraphModel
+    this.renderer = new TransferGraphRenderer
 
-    this.model = new TransferGraphModel({
-      now,
-      pixelAverageWindow,
-      maxSpeedDecay,
-      maxSpeedHeadroom,
-      ignoreTrailingSpeedSample,
-    })
+    this.setRendererOptions(options)
+  }
 
-    this.renderer = new TransferGraphRenderer({
-      canvasCtx,
-      canvasWidth,
-      canvasHeight,
-      formatSpeed,
-      pausedRenderOptions,
-      cancelledRenderOptions,
-      buildGraphOptions,
-      buildRenderOptions,
-    })
+  setModelOptions(options) {
+    this.model.setOptions(options)
+  }
+
+  setRendererOptions(options) {
+    this.renderer.setOptions(options)
   }
 
   onFrame() {}
   setOnFrame(onFrame) {
-    this.onFrame = typeof onFrame === 'function' ? onFrame : function () {}
+    this.onFrame = typeof onFrame === 'function' ? onFrame : this.onFrame
   }
 
   onControls() {}
   setOnControls(onControls) {
-    this.onControls = typeof onControls === 'function' ? onControls : function () {}
+    this.onControls = typeof onControls === 'function' ? onControls : this.onControls
     this.notifyControls()
-  }
-
-  onStateChange() {}
-  setOnStateChange(onStateChange) {
-    this.onStateChange = typeof onStateChange === 'function' ? onStateChange : function () {}
-    this.notifyState()
   }
 
   notifyControls() {
     this.onControls(this.model.getControlsView())
+  }
+
+  onStateChange() {}
+  setOnStateChange(onStateChange) {
+    this.onStateChange = typeof onStateChange === 'function' ? onStateChange : this.onStateChange
+    this.notifyState()
   }
 
   notifyState() {

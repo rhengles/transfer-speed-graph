@@ -265,11 +265,7 @@ import { FakeProgressSource, TRANSFER_UI_DEFAULTS } from './fake/progress-source
     }
   }
 
-  var app = new TransferGraphController({
-    canvasCtx: canvasCtx,
-    canvasWidth: CANVAS_W,
-    canvasHeight: CANVAS_H,
-  })
+  var app = new TransferGraphController()
 
   app.setOnFrame(applyFrameView)
   app.setOnControls(applyControlsView)
@@ -279,6 +275,11 @@ import { FakeProgressSource, TRANSFER_UI_DEFAULTS } from './fake/progress-source
     totalSize: TOTAL_SIZE,
     seriesCount: SERIES_COUNT,
     onStart: function (ev) {
+      app.setRendererOptions({
+        canvasCtx,
+        canvasWidth: CANVAS_W,
+        canvasHeight: CANVAS_H,
+      })
       app.startTransfer({ totalSize: ev.totalSize, nowMs: ev.nowMs })
       activeMode = ev.mode
     },
@@ -320,6 +321,11 @@ import { FakeProgressSource, TRANSFER_UI_DEFAULTS } from './fake/progress-source
 
     var url = endpoint.downloadUrl
     var startedNow = Date.now()
+    app.setRendererOptions({
+      canvasCtx,
+      canvasWidth: CANVAS_W,
+      canvasHeight: CANVAS_H,
+    })
     app.startTransfer({ totalSize: endpoint.downloadSize, nowMs: startedNow })
 
     fetch(url, { signal: abortController.signal }).then(function (res) {
@@ -369,6 +375,11 @@ import { FakeProgressSource, TRANSFER_UI_DEFAULTS } from './fake/progress-source
     var payload = new Blob([new Uint8Array(payloadSize)])
     var startedNow = Date.now()
 
+    app.setRendererOptions({
+      canvasCtx,
+      canvasWidth: CANVAS_W,
+      canvasHeight: CANVAS_H,
+    })
     app.startTransfer({ totalSize: payloadSize, nowMs: startedNow })
 
     activeNetworkAbort = {
