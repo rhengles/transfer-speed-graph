@@ -7,7 +7,7 @@ import {
 function renderTransferGraphFrame(args) {
   const maxValue = Number.isFinite(args.maxValue) ? args.maxValue : 0
   const series = args.series
-  const ctx = args.ctx
+  const canvasCtx = args.canvasCtx
   const size = args.size
   const runningMaxSpeed = args.runningMaxSpeed
   const graphOptions = args.graphOptions || {}
@@ -52,7 +52,7 @@ function renderTransferGraphFrame(args) {
   renderStepToCanvas(
     maxValue,
     series,
-    ctx,
+    canvasCtx,
     size,
     manageMaxSpeed ? (nextRunningMax || undefined) : undefined,
     finalRenderOptions

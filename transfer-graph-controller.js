@@ -17,7 +17,7 @@ class TransferGraphController {
       onFrame,
       onControls,
       onStateChange,
-      ctx,
+      canvasCtx,
       canvasWidth,
       canvasHeight,
       pausedColors,
@@ -52,7 +52,7 @@ class TransferGraphController {
     })
 
     this.renderer = new TransferGraphRenderer({
-      ctx,
+      canvasCtx,
       canvasWidth,
       canvasHeight,
       formatSpeed: this.formatSpeed,

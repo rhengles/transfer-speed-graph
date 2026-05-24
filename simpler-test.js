@@ -129,25 +129,25 @@ function getSnapshotAverageSpeedsAtResolution(seriesConfig, series, { w: canvasW
 
 function renderSnapshotToCanvas(snapshot) {
 	const canvas = createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT * snapshot.series.length)
-	const ctx = canvas.getContext('2d')
+	const canvasCtx = canvas.getContext('2d')
 	let runningMaxSpeed = 0
 
 	snapshot.series.forEach((_, index) => {
 		const offsetY = index * CANVAS_HEIGHT
 		const stepList = snapshot.series.slice(0, index + 1)
 
-		ctx.save()
-		ctx.translate(0, offsetY)
+		canvasCtx.save()
+		canvasCtx.translate(0, offsetY)
 		runningMaxSpeed = renderTransferGraphFrame({
 			maxValue: snapshot.seriesConfig.maxValue,
 			series: stepList,
-			ctx,
+			canvasCtx,
 			size: { w: CANVAS_WIDTH, h: CANVAS_HEIGHT },
 			runningMaxSpeed,
 			graphOptions: { maxSpeedDecay: 0.965, maxSpeedHeadroom: 1.06, pixelAverageWindow: 1 },
 			renderOptions: { pixelAverageWindow: 1 },
 		}).runningMaxSpeed
-		ctx.restore()
+		canvasCtx.restore()
 	})
 
 	return canvas
@@ -155,7 +155,7 @@ function renderSnapshotToCanvas(snapshot) {
 
 function renderProgressMilestoneSnapshotToCanvas(seriesConfig, series, progressList) {
 	const canvas = createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT * progressList.length)
-	const ctx = canvas.getContext('2d')
+	const canvasCtx = canvas.getContext('2d')
 	const milestoneIndexes = pickSeriesIndexesByProgress(series, seriesConfig.maxValue, progressList)
 
 	milestoneIndexes.forEach((stepIndex, rowIndex) => {
@@ -163,12 +163,12 @@ function renderProgressMilestoneSnapshotToCanvas(seriesConfig, series, progressL
 		const stepList = series.slice(0, stepIndex + 1)
 		const progressPct = Math.round(progressList[rowIndex] * 100)
 
-		ctx.save()
-		ctx.translate(0, offsetY)
+		canvasCtx.save()
+		canvasCtx.translate(0, offsetY)
 		renderTransferGraphFrame({
 			maxValue: seriesConfig.maxValue,
 			series: stepList,
-			ctx,
+			canvasCtx,
 			size: { w: CANVAS_WIDTH, h: CANVAS_HEIGHT },
 			runningMaxSpeed: 0,
 			manageMaxSpeed: false,
@@ -178,7 +178,7 @@ function renderProgressMilestoneSnapshotToCanvas(seriesConfig, series, progressL
 				backgroundValue: progressPct >= 100 ? seriesConfig.maxValue : undefined,
 			},
 		})
-		ctx.restore()
+		canvasCtx.restore()
 	})
 
 	return { canvas, milestoneIndexes }

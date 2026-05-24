@@ -3,7 +3,7 @@ import { renderTransferGraphFrame } from './transfer-graph-frame.js'
 class TransferGraphRenderer {
   constructor(options) {
     const opts = options || {}
-    this.ctx = opts.ctx
+    this.canvasCtx = opts.canvasCtx
     this.canvasWidth = Number.isFinite(opts.canvasWidth) ? Math.floor(opts.canvasWidth) : 416
     this.canvasHeight = Number.isFinite(opts.canvasHeight) ? Math.floor(opts.canvasHeight) : 72
     this.formatSpeed = typeof opts.formatSpeed === 'function' ? opts.formatSpeed : function (speedBps) {
@@ -67,7 +67,7 @@ class TransferGraphRenderer {
     return renderTransferGraphFrame({
       maxValue: model.totalSize,
       series: model.series,
-      ctx: this.ctx,
+      canvasCtx: this.canvasCtx,
       size: { w: this.canvasWidth, h: this.canvasHeight },
       runningMaxSpeed: model.runningMaxSpeed,
       recalculateMaxFromZero: true,

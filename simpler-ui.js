@@ -10,7 +10,7 @@ import { FakeProgressSource, TRANSFER_UI_DEFAULTS } from './fake/progress-source
 
   // -- DOM refs -------------------------------------------------------------
   var canvas = document.getElementById('graph-canvas')
-  var ctx = canvas.getContext('2d')
+  var canvasCtx = canvas.getContext('2d')
   var pctLabel = document.getElementById('pct-label')
   var titleText = document.getElementById('title-text')
   var statName = document.getElementById('stat-name')
@@ -266,7 +266,7 @@ import { FakeProgressSource, TRANSFER_UI_DEFAULTS } from './fake/progress-source
   }
 
   var app = new TransferGraphController({
-    ctx: ctx,
+    canvasCtx: canvasCtx,
     canvasWidth: CANVAS_W,
     canvasHeight: CANVAS_H,
     totalSize: TOTAL_SIZE,
