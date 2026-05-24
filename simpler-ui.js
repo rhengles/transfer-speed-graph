@@ -1,6 +1,8 @@
 import { printTime, bytesSize } from './lib.js'
 import { TransferGraphController } from './transfer-graph-controller.js'
 import { FakeProgressSource, TRANSFER_UI_DEFAULTS } from './fake/progress-source.js'
+import { startRealDownloadExample as runRealDownloadExample } from './real/download-example.js'
+import { startRealUploadExample as runRealUploadExample } from './real/upload-example.js'
 
   // -- constants ------------------------------------------------------------
   var TOTAL_SIZE = TRANSFER_UI_DEFAULTS.totalSize
@@ -272,151 +274,70 @@ import { FakeProgressSource, TRANSFER_UI_DEFAULTS } from './fake/progress-source
   app.setOnStateChange(applyStateView)
 
   var fakeSource = new FakeProgressSource({
+    controller: app,
     totalSize: TOTAL_SIZE,
     seriesCount: SERIES_COUNT,
+    onControls: applySeriesControlsView,
     onStart: function (ev) {
-      app.setRendererOptions({
-        canvasCtx,
-        canvasWidth: CANVAS_W,
-        canvasHeight: CANVAS_H,
-      })
-      app.startTransfer({ totalSize: ev.totalSize, nowMs: ev.nowMs })
       activeMode = ev.mode
     },
-    onProgress: function (ev) {
-      app.pushProgress(ev)
-    },
-    onSeriesReplace: function (ev) {
-      app.replaceRenderedSeries(ev)
-    },
-    onFinish: function (ev) {
-      app.finishTransfer(ev)
-    },
-    onControls: applySeriesControlsView,
     onCancel: function () {
-      app.cancel()
       activeMode = 'idle'
-    },
-    onPauseState: function (isPaused) {
-      if (isPaused) app.pause()
-      else app.resume()
     },
   })
 
   function startFake(mode) {
     stopActiveSource()
     hideEndpointConfig()
+    app.setRendererOptions({
+      canvasCtx,
+      canvasWidth: CANVAS_W,
+      canvasHeight: CANVAS_H,
+    })
     activeMode = mode
     fakeSource.start(mode)
   }
 
   function startRealDownloadExample() {
     stopActiveSource()
-    activeMode = 'download'
-
-    var endpoint = getEndpointConfig()
-
-    var abortController = new AbortController()
-    activeNetworkAbort = abortController
-
-    var url = endpoint.downloadUrl
-    var startedNow = Date.now()
-    app.setRendererOptions({
-      canvasCtx,
+    runRealDownloadExample({
+      controller: app,
+      endpoint: getEndpointConfig(),
+      canvasCtx: canvasCtx,
       canvasWidth: CANVAS_W,
       canvasHeight: CANVAS_H,
-    })
-    app.startTransfer({ totalSize: endpoint.downloadSize, nowMs: startedNow })
-
-    fetch(url, { signal: abortController.signal }).then(function (res) {
-      if (!res.ok || !res.body) {
-        throw new Error('Download failed: ' + res.status)
-      }
-
-      var totalHeader = parseInt(res.headers.get('content-length') || '0', 10)
-      var totalSize = Number.isFinite(totalHeader) && totalHeader > 0
-        ? totalHeader
-        : endpoint.downloadSize
-
-      var reader = res.body.getReader()
-      var loaded = 0
-
-      function pump() {
-        return reader.read().then(function (chunk) {
-          if (chunk.done) {
-            app.finishTransfer({ transferredBytes: loaded, totalSize: totalSize, nowMs: Date.now() })
-            activeNetworkAbort = null
-            return
-          }
-          loaded += chunk.value.byteLength
-          app.pushProgress({ transferredBytes: loaded, totalSize: totalSize, nowMs: Date.now() })
-          return pump()
-        })
-      }
-
-      return pump()
-    }).catch(function (err) {
-      if (abortController.signal.aborted) return
-      console.warn('Real download example failed:', err)
-      app.cancel()
-      activeNetworkAbort = null
-      activeMode = 'idle'
+      setActiveMode: function (mode) {
+        activeMode = mode
+      },
+      setActiveNetworkAbort: function (nextAbort) {
+        activeNetworkAbort = nextAbort
+      },
+      now: Date.now,
+      onError: function (err) {
+        console.warn('Real download example failed:', err)
+      },
     })
   }
 
   function startRealUploadExample() {
     stopActiveSource()
-    activeMode = 'upload'
-
-    var endpoint = getEndpointConfig()
-
-    var xhr = new XMLHttpRequest()
-    var payloadSize = endpoint.uploadSize
-    var payload = new Blob([new Uint8Array(payloadSize)])
-    var startedNow = Date.now()
-
-    app.setRendererOptions({
-      canvasCtx,
+    runRealUploadExample({
+      controller: app,
+      endpoint: getEndpointConfig(),
+      canvasCtx: canvasCtx,
       canvasWidth: CANVAS_W,
       canvasHeight: CANVAS_H,
+      setActiveMode: function (mode) {
+        activeMode = mode
+      },
+      setActiveNetworkAbort: function (nextAbort) {
+        activeNetworkAbort = nextAbort
+      },
+      now: Date.now,
+      onError: function () {
+        console.warn('Real upload example failed')
+      },
     })
-    app.startTransfer({ totalSize: payloadSize, nowMs: startedNow })
-
-    activeNetworkAbort = {
-      abort: function () {
-        xhr.abort()
-      }
-    }
-
-    xhr.upload.addEventListener('progress', function (ev) {
-      if (!ev.lengthComputable) return
-      app.pushProgress({
-        transferredBytes: ev.loaded,
-        totalSize: ev.total,
-        nowMs: Date.now(),
-      })
-    })
-
-    xhr.addEventListener('load', function () {
-      app.finishTransfer({ transferredBytes: payloadSize, totalSize: payloadSize, nowMs: Date.now() })
-      activeNetworkAbort = null
-    })
-
-    xhr.addEventListener('error', function () {
-      console.warn('Real upload example failed')
-      app.cancel()
-      activeNetworkAbort = null
-      activeMode = 'idle'
-    })
-
-    xhr.addEventListener('abort', function () {
-      app.cancel()
-      activeNetworkAbort = null
-      activeMode = 'idle'
-    })
-
-    xhr.open('POST', endpoint.uploadUrl)
-    xhr.send(payload)
   }
 
   toggleBtn.addEventListener('click', function () {

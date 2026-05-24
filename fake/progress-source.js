@@ -16,6 +16,7 @@ class FakeProgressSource {
   constructor(options) {
     const opts = options || {}
     const {
+      controller,
       now,
       schedule,
       unschedule,
@@ -36,6 +37,7 @@ class FakeProgressSource {
     this.now = typeof now === 'function' ? now : Date.now
     this.schedule = typeof schedule === 'function' ? schedule : setTimeout
     this.unschedule = typeof unschedule === 'function' ? unschedule : clearTimeout
+    this.transferGraphController = controller || null
 
     this.onStart = typeof onStart === 'function' ? onStart : function () {}
     this.onProgress = typeof onProgress === 'function' ? onProgress : function () {}
@@ -68,6 +70,49 @@ class FakeProgressSource {
     this.onControls(this.getControlsView())
   }
 
+  syncStart(event) {
+    if (this.transferGraphController) {
+      this.transferGraphController.startTransfer({ totalSize: event.totalSize, nowMs: event.nowMs })
+    }
+    this.onStart(event)
+  }
+
+  syncProgress(event) {
+    if (this.transferGraphController) {
+      this.transferGraphController.pushProgress(event)
+    }
+    this.onProgress(event)
+  }
+
+  syncSeriesReplace(event) {
+    if (this.transferGraphController) {
+      this.transferGraphController.replaceRenderedSeries(event)
+    }
+    this.onSeriesReplace(event)
+  }
+
+  syncFinish(event) {
+    if (this.transferGraphController) {
+      this.transferGraphController.finishTransfer(event)
+    }
+    this.onFinish(event)
+  }
+
+  syncCancel(event) {
+    if (this.transferGraphController) {
+      this.transferGraphController.cancel()
+    }
+    this.onCancel(event)
+  }
+
+  syncPauseState(isPaused) {
+    if (this.transferGraphController) {
+      if (isPaused) this.transferGraphController.pause()
+      else this.transferGraphController.resume()
+    }
+    this.onPauseState(isPaused)
+  }
+
   getActiveTransferredBytes() {
     return this.seriesSelection.getActiveTransferredBytes(this.controller)
   }
@@ -97,7 +142,7 @@ class FakeProgressSource {
       this.onOutOfBounds(result.outOfBoundsIndex - 1)
     }
 
-    this.onProgress({
+    this.syncProgress({
       transferredBytes: this.getActiveTransferredBytes(),
       totalSize: this.controller.getTotalSize(),
       elapsedMs: result.elapsedMs,
@@ -105,7 +150,7 @@ class FakeProgressSource {
     })
 
     if (result.finished) {
-      this.onFinish({
+      this.syncFinish({
         transferredBytes: this.getActiveTransferredBytes(),
         totalSize: this.controller.getTotalSize(),
         elapsedMs: result.elapsedMs,
@@ -125,12 +170,12 @@ class FakeProgressSource {
       mode: mode || 'random',
     })
     this.controller.start(this.now())
-    this.onStart({
+    this.syncStart({
       mode: mode || 'random',
       totalSize: this.controller.getTotalSize(),
       nowMs: this.now(),
     })
-    this.onPauseState(false)
+    this.syncPauseState(false)
     this.scheduleTick()
   }
 
@@ -140,7 +185,7 @@ class FakeProgressSource {
 
     // If fake transfer is active, immediately re-render from selected series.
     if (this.controller && this.controller.isStarted()) {
-      this.onSeriesReplace({
+      this.syncSeriesReplace({
         series: this.getActiveSeriesPoints(),
         totalSize: this.controller.getTotalSize(),
         elapsedMs: this.controller.getElapsed(this.now()),
@@ -154,20 +199,20 @@ class FakeProgressSource {
     if (!this.controller) return
     this.clearTimer()
     this.controller.cancel()
-    this.onCancel({ nowMs: this.now() })
+    this.syncCancel({ nowMs: this.now() })
   }
 
   pause() {
     if (!this.controller || this.controller.isFinished() || this.controller.isPaused()) return
     this.controller.pause(this.now())
     this.clearTimer()
-    this.onPauseState(true)
+    this.syncPauseState(true)
   }
 
   resume() {
     if (!this.controller || this.controller.isFinished() || !this.controller.isPaused()) return
     this.controller.resume(this.now())
-    this.onPauseState(false)
+    this.syncPauseState(false)
     this.scheduleTick()
   }
 

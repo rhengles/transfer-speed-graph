@@ -43,9 +43,13 @@ class TransferGraphModel {
     return this.paused || (this.finished && this.finishedPauseVisual)
   }
 
+  getNow(nowMs) {
+    return Number.isFinite(nowMs) ? nowMs : this.now()
+  }
+
   getElapsed(nowMs) {
     if (!this.started) return 0
-    let currentNow = Number.isFinite(nowMs) ? nowMs : this.now()
+    let currentNow = this.getNow(nowMs)
     if (this.paused) currentNow = this.pausedAt
     return Math.max(0, currentNow - this.startedAt - this.pausedDuration)
   }
@@ -140,7 +144,7 @@ class TransferGraphModel {
     this.finished = false
     this.cancelled = false
     this.finishedPauseVisual = false
-    this.startedAt = Number.isFinite(cfg.nowMs) ? cfg.nowMs : this.now()
+    this.startedAt = this.getNow(cfg.nowMs)
     this.pausedAt = 0
     this.pausedDuration = 0
     this.resetSeries()
@@ -161,7 +165,7 @@ class TransferGraphModel {
 
   pushProgress(update) {
     const payload = update || {}
-    const nextNow = Number.isFinite(payload.nowMs) ? payload.nowMs : this.now()
+    const nextNow = this.getNow(payload.nowMs)
     if (!this.started) {
       this.startTransfer({ totalSize: payload.totalSize, nowMs: nextNow })
     }
@@ -181,7 +185,7 @@ class TransferGraphModel {
 
   replaceRenderedSeries(update) {
     const payload = update || {}
-    const nextNow = Number.isFinite(payload.nowMs) ? payload.nowMs : this.now()
+    const nextNow = this.getNow(payload.nowMs)
 
     if (!this.started) {
       this.startTransfer({ totalSize: payload.totalSize, nowMs: nextNow })
@@ -229,13 +233,13 @@ class TransferGraphModel {
   pause(nowMs) {
     if (!this.started || this.finished || this.paused) return false
     this.paused = true
-    this.pausedAt = Number.isFinite(nowMs) ? nowMs : this.now()
+    this.pausedAt = this.getNow(nowMs)
     return true
   }
 
   resume(nowMs) {
     if (!this.started || this.finished || !this.paused) return false
-    const resumeAt = Number.isFinite(nowMs) ? nowMs : this.now()
+    const resumeAt = this.getNow(nowMs)
     this.pausedDuration += Math.max(0, resumeAt - this.pausedAt)
     this.paused = false
     this.pausedAt = 0
