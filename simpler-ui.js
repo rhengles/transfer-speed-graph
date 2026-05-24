@@ -1,7 +1,7 @@
 import { printTime, bytesSize } from './lib.js'
 import { TRANSFER_UI_DEFAULTS } from './transfer-simulation.js'
-import { createTransferGraphController } from './transfer-graph-controller.js'
-import { createFakeProgressSource } from './transfer-fake-progress-source.js'
+import { TransferGraphController } from './transfer-graph-controller.js'
+import { FakeProgressSource } from './transfer-fake-progress-source.js'
 
   // -- constants ------------------------------------------------------------
   var TOTAL_SIZE = TRANSFER_UI_DEFAULTS.totalSize
@@ -259,18 +259,17 @@ import { createFakeProgressSource } from './transfer-fake-progress-source.js'
     }
   }
 
-  var app = createTransferGraphController({
+  var app = new TransferGraphController({
     ctx: ctx,
     canvasWidth: CANVAS_W,
     canvasHeight: CANVAS_H,
     totalSize: TOTAL_SIZE,
-    mode: 'random',
     onFrame: applyFrameView,
     onControls: applyControlsView,
     onStateChange: applyStateView,
   })
 
-  var fakeSource = createFakeProgressSource({
+  var fakeSource = new FakeProgressSource({
     totalSize: TOTAL_SIZE,
     seriesCount: SERIES_COUNT,
     onStart: function (ev) {

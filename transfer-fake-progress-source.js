@@ -1,5 +1,5 @@
 import {
-  createTransferController,
+  TransferController,
   clampSeriesIndex,
   TRANSFER_UI_DEFAULTS,
 } from './transfer-simulation.js'
@@ -95,7 +95,7 @@ class FakeProgressSource {
 
   start(mode) {
     this.clearTimer()
-    this.controller = createTransferController({
+    this.controller = new TransferController({
       totalSize: this.opts.totalSize || TRANSFER_UI_DEFAULTS.totalSize,
       seriesCount: this.seriesCount,
       mode: mode || 'random',
