@@ -1,10 +1,16 @@
 import {
   TransferController,
-  clampSeriesIndex,
-  TRANSFER_UI_DEFAULTS,
 } from './transfer-simulation.js'
+import {
+  clampSeriesIndex,
+} from './transfer-fake-series.js'
 import { TransferTimerScheduler } from './transfer-timer-scheduler.js'
 import { TransferSeriesSelection } from './transfer-series-selection.js'
+
+const TRANSFER_UI_DEFAULTS = {
+  totalSize: 256 * 1024 * 1024,
+  seriesCount: 16,
+}
 
 class FakeProgressSource {
   constructor(options) {
@@ -189,6 +195,7 @@ function createFakeProgressSource(options) {
 }
 
 export {
+  TRANSFER_UI_DEFAULTS,
   FakeProgressSource,
   createFakeProgressSource,
 }

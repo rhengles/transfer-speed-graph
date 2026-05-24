@@ -19,11 +19,11 @@ import {
 } from './simpler.js'
 import {
 	buildDeterministicTransferSeries,
-	TRANSFER_UI_DEFAULTS,
 	clampSeriesIndex,
 	createSeededRandom,
-	renderTransferGraphFrame,
-} from './transfer-simulation.js'
+} from './transfer-fake-series.js'
+import { TRANSFER_UI_DEFAULTS } from './transfer-fake-progress-source.js'
+import { renderTransferGraphFrame } from './transfer-graph-frame.js'
 import { createCanvas } from 'canvas'
 
 const __filename = fileURLToPath(import.meta.url)

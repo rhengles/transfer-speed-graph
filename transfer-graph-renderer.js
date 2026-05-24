@@ -1,4 +1,4 @@
-import { renderTransferGraphFrame } from './transfer-simulation.js'
+import { renderTransferGraphFrame } from './transfer-graph-frame.js'
 
 class TransferGraphRenderer {
   constructor(options) {
@@ -14,11 +14,20 @@ class TransferGraphRenderer {
       backgroundStroke: '#d1c06a',
       overlay: '#b19704',
     }, opts.pausedColors || {})
+    this.cancelledColors = Object.assign({
+      background: '#d6d6d6',
+      backgroundStroke: '#b8b8b8',
+      overlay: '#8a8a8a',
+    }, opts.cancelledColors || {})
     this.buildGraphOptions = typeof opts.buildGraphOptions === 'function' ? opts.buildGraphOptions : null
     this.buildRenderOptions = typeof opts.buildRenderOptions === 'function' ? opts.buildRenderOptions : null
   }
 
-  render(model, seriesConfig) {
+  render(model) {
+    const seriesConfig = { maxValue: model.totalSize }
+    const isCancelled = model.cancelled === true
+    const usePausedPalette = !isCancelled && model.isPauseVisualActive()
+
     let graphOptions = {
       pixelAverageWindow: model.pixelAverageWindow,
       maxSpeedDecay: model.maxSpeedDecay,
@@ -30,10 +39,23 @@ class TransferGraphRenderer {
       speedLabelFormatter: (speed) => this.formatSpeed(speed * 1000),
       pixelAverageWindow: model.pixelAverageWindow,
       ignoreTrailingSpeedSample: model.ignoreTrailingSpeedSample,
-      backgroundValue: model.finished ? model.totalSize : undefined,
-      colorBackground: model.isPauseVisualActive() ? this.pausedColors.background : undefined,
-      colorBackgroundStroke: model.isPauseVisualActive() ? this.pausedColors.backgroundStroke : undefined,
-      colorOverlay: model.isPauseVisualActive() ? this.pausedColors.overlay : undefined,
+      // Keep canceled transfers frozen at current progress instead of forcing full completion fill.
+      backgroundValue: model.finished && !isCancelled ? model.totalSize : undefined,
+      colorBackground: isCancelled
+        ? this.cancelledColors.background
+        : usePausedPalette
+        ? this.pausedColors.background
+        : undefined,
+      colorBackgroundStroke: isCancelled
+        ? this.cancelledColors.backgroundStroke
+        : usePausedPalette
+        ? this.pausedColors.backgroundStroke
+        : undefined,
+      colorOverlay: isCancelled
+        ? this.cancelledColors.overlay
+        : usePausedPalette
+        ? this.pausedColors.overlay
+        : undefined,
     }
 
     if (this.buildGraphOptions) {

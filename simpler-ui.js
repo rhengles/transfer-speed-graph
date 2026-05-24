@@ -1,7 +1,6 @@
 import { printTime, bytesSize } from './lib.js'
-import { TRANSFER_UI_DEFAULTS } from './transfer-simulation.js'
 import { TransferGraphController } from './transfer-graph-controller.js'
-import { FakeProgressSource } from './transfer-fake-progress-source.js'
+import { FakeProgressSource, TRANSFER_UI_DEFAULTS } from './transfer-fake-progress-source.js'
 
   // -- constants ------------------------------------------------------------
   var TOTAL_SIZE = TRANSFER_UI_DEFAULTS.totalSize
@@ -150,6 +149,9 @@ import { FakeProgressSource } from './transfer-fake-progress-source.js'
     btnPause.textContent = state.pauseButtonLabel
     btnPause.style.opacity = state.pauseButtonEnabled ? '1' : '0.4'
     btnPause.style.pointerEvents = state.pauseButtonEnabled ? 'auto' : 'none'
+    btnCancel.disabled = !state.started || state.finished || state.cancelled
+    btnCancel.style.opacity = btnCancel.disabled ? '0.4' : '1'
+    btnCancel.style.pointerEvents = btnCancel.disabled ? 'none' : 'auto'
     startModeControls.style.display = state.started ? 'none' : ''
     updateToolbarVisibility(state)
     if (btnReset) {
@@ -165,6 +167,10 @@ import { FakeProgressSource } from './transfer-fake-progress-source.js'
     return activeMode === 'download' || activeMode === 'upload'
   }
 
+  function isFakeMode() {
+    return activeMode === 'random' || activeMode === 'deterministic'
+  }
+
   function updateToolbarVisibility(state) {
     if (groupMaxSpeedDecay) groupMaxSpeedDecay.style.display = 'none'
     if (groupMaxSpeedHeadroom) groupMaxSpeedHeadroom.style.display = 'none'
@@ -178,7 +184,7 @@ import { FakeProgressSource } from './transfer-fake-progress-source.js'
 
     if (groupPixelControls) groupPixelControls.style.display = ''
     if (groupSeriesControls) {
-      groupSeriesControls.style.display = (state.started && isRealMode()) ? 'none' : ''
+      groupSeriesControls.style.display = isFakeMode() ? '' : 'none'
     }
   }
 
