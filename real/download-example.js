@@ -5,7 +5,6 @@ function startRealDownloadExample(options) {
     setActiveMode,
     setActiveNetworkAbort,
     onError,
-    now,
     canvasCtx,
     canvasWidth,
     canvasHeight,
@@ -21,7 +20,7 @@ function startRealDownloadExample(options) {
     canvasWidth,
     canvasHeight,
   })
-  controller.startTransfer({ totalSize: endpoint.downloadSize, nowMs: now() })
+  controller.startTransfer({ totalSize: endpoint.downloadSize })
 
   return fetch(endpoint.downloadUrl, { signal: abortController.signal }).then(function (res) {
     if (!res.ok || !res.body) {
@@ -39,13 +38,13 @@ function startRealDownloadExample(options) {
     function pump() {
       return reader.read().then(function (chunk) {
         if (chunk.done) {
-          controller.finishTransfer({ transferredBytes: loaded, totalSize: totalSize, nowMs: now() })
+          controller.finishTransfer({ transferredBytes: loaded, totalSize: totalSize })
           setActiveNetworkAbort(null)
           return
         }
 
         loaded += chunk.value.byteLength
-        controller.pushProgress({ transferredBytes: loaded, totalSize: totalSize, nowMs: now() })
+        controller.pushProgress({ transferredBytes: loaded, totalSize: totalSize })
         return pump()
       })
     }

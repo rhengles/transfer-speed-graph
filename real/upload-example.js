@@ -5,7 +5,6 @@ function startRealUploadExample(options) {
     setActiveMode,
     setActiveNetworkAbort,
     onError,
-    now,
     canvasCtx,
     canvasWidth,
     canvasHeight,
@@ -23,7 +22,7 @@ function startRealUploadExample(options) {
     canvasWidth,
     canvasHeight,
   })
-  controller.startTransfer({ totalSize: payloadSize, nowMs: now() })
+  controller.startTransfer({ totalSize: payloadSize })
 
   setActiveNetworkAbort({
     abort: function () {
@@ -36,12 +35,11 @@ function startRealUploadExample(options) {
     controller.pushProgress({
       transferredBytes: ev.loaded,
       totalSize: ev.total,
-      nowMs: now(),
     })
   })
 
   xhr.addEventListener('load', function () {
-    controller.finishTransfer({ transferredBytes: payloadSize, totalSize: payloadSize, nowMs: now() })
+    controller.finishTransfer({ transferredBytes: payloadSize, totalSize: payloadSize })
     setActiveNetworkAbort(null)
   })
 
