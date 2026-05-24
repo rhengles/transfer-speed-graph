@@ -3,195 +3,174 @@ import {
   clampSeriesIndex,
   TRANSFER_UI_DEFAULTS,
 } from './transfer-simulation.js'
+import { TransferTimerScheduler } from './transfer-timer-scheduler.js'
+import { TransferSeriesSelection } from './transfer-series-selection.js'
 
-function createFakeProgressSource(options) {
-  const opts = options || {}
-  const now = typeof opts.now === 'function' ? opts.now : Date.now
-  const schedule = typeof opts.schedule === 'function' ? opts.schedule : setTimeout
-  const unschedule = typeof opts.unschedule === 'function' ? opts.unschedule : clearTimeout
+class FakeProgressSource {
+  constructor(options) {
+    this.opts = options || {}
+    this.now = typeof this.opts.now === 'function' ? this.opts.now : Date.now
+    this.schedule = typeof this.opts.schedule === 'function' ? this.opts.schedule : setTimeout
+    this.unschedule = typeof this.opts.unschedule === 'function' ? this.opts.unschedule : clearTimeout
 
-  const onStart = typeof opts.onStart === 'function' ? opts.onStart : function () {}
-  const onProgress = typeof opts.onProgress === 'function' ? opts.onProgress : function () {}
-  const onSeriesReplace = typeof opts.onSeriesReplace === 'function' ? opts.onSeriesReplace : function () {}
-  const onFinish = typeof opts.onFinish === 'function' ? opts.onFinish : function () {}
-  const onCancel = typeof opts.onCancel === 'function' ? opts.onCancel : function () {}
-  const onPauseState = typeof opts.onPauseState === 'function' ? opts.onPauseState : function () {}
-  const onControls = typeof opts.onControls === 'function' ? opts.onControls : function () {}
-  const onOutOfBounds = typeof opts.onOutOfBounds === 'function' ? opts.onOutOfBounds : function (seriesIndex) {
-    console.warn('Generated size out of bounds at index ' + seriesIndex)
-  }
-
-  const seriesCount = Math.max(1, Math.floor(opts.seriesCount || TRANSFER_UI_DEFAULTS.seriesCount || 1))
-  let seriesAverageActiveIndex = clampSeriesIndex(opts.seriesAverageActiveIndex || 1, seriesCount, true)
-  let controller = null
-  let timerId = null
-
-  function getControlsView() {
-    return {
-      seriesActiveIndex: seriesAverageActiveIndex,
-      seriesCount,
-    }
-  }
-
-  function notifyControls() {
-    onControls(getControlsView())
-  }
-
-  function getActiveTransferredBytes() {
-    if (!controller) return 0
-    const selectedSeries = controller.getSeries(seriesAverageActiveIndex, true)
-    if (!selectedSeries || !selectedSeries.length) return 0
-    return selectedSeries[selectedSeries.length - 1][1]
-  }
-
-  function getActiveSeriesPoints() {
-    if (!controller) return [[0, 0]]
-    const selectedSeries = controller.getSeries(seriesAverageActiveIndex, true)
-    if (!selectedSeries || !selectedSeries.length) return [[0, 0]]
-
-    const points = []
-    for (let i = 0; i < selectedSeries.length; i += 1) {
-      const row = selectedSeries[i]
-      if (!Array.isArray(row) || row.length < 2) continue
-      points.push([row[0], row[1]])
+    this.onStart = typeof this.opts.onStart === 'function' ? this.opts.onStart : function () {}
+    this.onProgress = typeof this.opts.onProgress === 'function' ? this.opts.onProgress : function () {}
+    this.onSeriesReplace = typeof this.opts.onSeriesReplace === 'function' ? this.opts.onSeriesReplace : function () {}
+    this.onFinish = typeof this.opts.onFinish === 'function' ? this.opts.onFinish : function () {}
+    this.onCancel = typeof this.opts.onCancel === 'function' ? this.opts.onCancel : function () {}
+    this.onPauseState = typeof this.opts.onPauseState === 'function' ? this.opts.onPauseState : function () {}
+    this.onControls = typeof this.opts.onControls === 'function' ? this.opts.onControls : function () {}
+    this.onOutOfBounds = typeof this.opts.onOutOfBounds === 'function' ? this.opts.onOutOfBounds : function (seriesIndex) {
+      console.warn('Generated size out of bounds at index ' + seriesIndex)
     }
 
-    return points.length ? points : [[0, 0]]
+    this.seriesSelection = new TransferSeriesSelection({
+      clampSeriesIndex,
+      seriesCount: this.opts.seriesCount || TRANSFER_UI_DEFAULTS.seriesCount || 1,
+      seriesActiveIndex: this.opts.seriesAverageActiveIndex || 1,
+    })
+    this.seriesCount = this.seriesSelection.seriesCount
+    this.controller = null
+    this.scheduler = new TransferTimerScheduler(this.schedule, this.unschedule)
+
+    this.notifyControls()
   }
 
-  function clearTimer() {
-    if (timerId !== null) {
-      unschedule(timerId)
-      timerId = null
-    }
+  getControlsView() {
+    return this.seriesSelection.getControlsView()
   }
 
-  function scheduleTick() {
-    if (!controller || controller.isPaused() || controller.isFinished()) return
-    const frameMs = controller.nextFrameMs()
-    timerId = schedule(function () {
-      tick(frameMs)
-    }, frameMs)
+  notifyControls() {
+    this.onControls(this.getControlsView())
   }
 
-  function tick(frameMs) {
-    if (!controller) return
-    const result = controller.runStep({ frameMs, nowMs: now() })
+  getActiveTransferredBytes() {
+    return this.seriesSelection.getActiveTransferredBytes(this.controller)
+  }
+
+  getActiveSeriesPoints() {
+    return this.seriesSelection.getActiveSeriesPoints(this.controller)
+  }
+
+  clearTimer() {
+    this.scheduler.clear()
+  }
+
+  scheduleTick() {
+    if (!this.controller || this.controller.isPaused() || this.controller.isFinished()) return
+    const frameMs = this.controller.nextFrameMs()
+    this.scheduler.scheduleOnce(frameMs, () => {
+      this.tick(frameMs)
+    })
+  }
+
+  tick(frameMs) {
+    if (!this.controller) return
+    const result = this.controller.runStep({ frameMs, nowMs: this.now() })
     if (!result.advanced) return
 
     if (result.outOfBoundsIndex) {
-      onOutOfBounds(result.outOfBoundsIndex - 1)
+      this.onOutOfBounds(result.outOfBoundsIndex - 1)
     }
 
-    onProgress({
-      transferredBytes: getActiveTransferredBytes(),
-      totalSize: controller.getTotalSize(),
+    this.onProgress({
+      transferredBytes: this.getActiveTransferredBytes(),
+      totalSize: this.controller.getTotalSize(),
       elapsedMs: result.elapsedMs,
-      nowMs: now(),
+      nowMs: this.now(),
     })
 
     if (result.finished) {
-      onFinish({
-        transferredBytes: getActiveTransferredBytes(),
-        totalSize: controller.getTotalSize(),
+      this.onFinish({
+        transferredBytes: this.getActiveTransferredBytes(),
+        totalSize: this.controller.getTotalSize(),
         elapsedMs: result.elapsedMs,
-        nowMs: now(),
+        nowMs: this.now(),
       })
       return
     }
 
-    scheduleTick()
+    this.scheduleTick()
   }
 
-  function start(mode) {
-    clearTimer()
-    controller = createTransferController({
-      totalSize: opts.totalSize || TRANSFER_UI_DEFAULTS.totalSize,
-      seriesCount,
+  start(mode) {
+    this.clearTimer()
+    this.controller = createTransferController({
+      totalSize: this.opts.totalSize || TRANSFER_UI_DEFAULTS.totalSize,
+      seriesCount: this.seriesCount,
       mode: mode || 'random',
     })
-    controller.start(now())
-    onStart({
+    this.controller.start(this.now())
+    this.onStart({
       mode: mode || 'random',
-      totalSize: controller.getTotalSize(),
-      nowMs: now(),
+      totalSize: this.controller.getTotalSize(),
+      nowMs: this.now(),
     })
-    onPauseState(false)
-    scheduleTick()
+    this.onPauseState(false)
+    this.scheduleTick()
   }
 
-  function setSeriesAverageActiveIndex(nextIndex) {
-    const bounded = clampSeriesIndex(nextIndex, seriesCount, true)
-    if (bounded === seriesAverageActiveIndex) return
-    seriesAverageActiveIndex = bounded
-    notifyControls()
+  setSeriesAverageActiveIndex(nextIndex) {
+    if (!this.seriesSelection.setActiveIndex(nextIndex)) return
+    this.notifyControls()
 
     // If fake transfer is active, immediately re-render from selected series.
-    if (controller && controller.isStarted()) {
-      onSeriesReplace({
-        series: getActiveSeriesPoints(),
-        totalSize: controller.getTotalSize(),
-        elapsedMs: controller.getElapsed(now()),
-        finished: controller.isFinished(),
-        nowMs: now(),
+    if (this.controller && this.controller.isStarted()) {
+      this.onSeriesReplace({
+        series: this.getActiveSeriesPoints(),
+        totalSize: this.controller.getTotalSize(),
+        elapsedMs: this.controller.getElapsed(this.now()),
+        finished: this.controller.isFinished(),
+        nowMs: this.now(),
       })
     }
   }
 
-  function cancel() {
-    if (!controller) return
-    clearTimer()
-    controller.cancel()
-    onCancel({ nowMs: now() })
+  cancel() {
+    if (!this.controller) return
+    this.clearTimer()
+    this.controller.cancel()
+    this.onCancel({ nowMs: this.now() })
   }
 
-  function pause() {
-    if (!controller || controller.isFinished() || controller.isPaused()) return
-    controller.pause(now())
-    clearTimer()
-    onPauseState(true)
+  pause() {
+    if (!this.controller || this.controller.isFinished() || this.controller.isPaused()) return
+    this.controller.pause(this.now())
+    this.clearTimer()
+    this.onPauseState(true)
   }
 
-  function resume() {
-    if (!controller || controller.isFinished() || !controller.isPaused()) return
-    controller.resume(now())
-    onPauseState(false)
-    scheduleTick()
+  resume() {
+    if (!this.controller || this.controller.isFinished() || !this.controller.isPaused()) return
+    this.controller.resume(this.now())
+    this.onPauseState(false)
+    this.scheduleTick()
   }
 
-  function togglePause() {
-    if (!controller || controller.isFinished()) return false
-    if (controller.isPaused()) {
-      resume()
+  togglePause() {
+    if (!this.controller || this.controller.isFinished()) return false
+    if (this.controller.isPaused()) {
+      this.resume()
     } else {
-      pause()
+      this.pause()
     }
-    return controller.isPaused()
+    return this.controller.isPaused()
   }
 
-  function isPaused() {
-    return controller ? controller.isPaused() : false
+  isPaused() {
+    return this.controller ? this.controller.isPaused() : false
   }
 
-  function isActive() {
-    return !!controller && controller.isStarted() && !controller.isFinished()
-  }
-
-  notifyControls()
-
-  return {
-    start,
-    cancel,
-    pause,
-    resume,
-    togglePause,
-    setSeriesAverageActiveIndex,
-    getControlsView,
-    isPaused,
-    isActive,
+  isActive() {
+    return !!this.controller && this.controller.isStarted() && !this.controller.isFinished()
   }
 }
 
+function createFakeProgressSource(options) {
+  return new FakeProgressSource(options)
+}
+
 export {
+  FakeProgressSource,
   createFakeProgressSource,
 }

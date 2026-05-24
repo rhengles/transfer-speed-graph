@@ -3,6 +3,8 @@ import {
   resolveGraphMaxSpeed,
   renderStepToCanvas,
 } from './simpler.js'
+import { TransferControllerRuntime } from './transfer-controller-runtime.js'
+import { TransferControllerStepper } from './transfer-controller-stepper.js'
 
 const TRANSFER_SIMULATION_DEFAULTS = {
   minFrame: 20,
@@ -119,162 +121,111 @@ function appendTransferStep(args) {
   }
 }
 
-function createTransferController(config) {
-  const merged = Object.assign({}, TRANSFER_SIMULATION_DEFAULTS, TRANSFER_UI_DEFAULTS, config || {})
-  const totalSize = Number.isFinite(merged.totalSize) && merged.totalSize > 0
-    ? merged.totalSize
-    : 0
-  const seriesCount = Math.max(1, Math.floor(merged.seriesCount || 1))
-  let mode = merged.mode === 'deterministic' ? 'deterministic' : 'random'
-  let seriesCollection = createSeriesCollection(seriesCount)
-  let generator = createFrameAndSizeGenerator(
-    merged,
-    createTransferRng(mode, merged.deterministicSeed)
-  )
-
-  let startTime = 0
-  let pausedAt = 0
-  let pausedDuration = 0
-  let logicalElapsedMs = 0
-  let transferredBytes = 0
-  let started = false
-  let paused = false
-  let finished = false
-
-  function resetSeries() {
-    seriesCollection = createSeriesCollection(seriesCount)
-    transferredBytes = 0
-  }
-
-  function resetGenerator() {
-    generator = createFrameAndSizeGenerator(
-      merged,
-      createTransferRng(mode, merged.deterministicSeed)
-    )
-  }
-
-  function reset() {
-    started = false
-    paused = false
-    finished = false
-    startTime = 0
-    pausedAt = 0
-    pausedDuration = 0
-    logicalElapsedMs = 0
-    resetGenerator()
-    resetSeries()
-  }
-
-  function setMode(nextMode) {
-    mode = nextMode === 'deterministic' ? 'deterministic' : 'random'
-    resetGenerator()
-  }
-
-  function getElapsed(nowMs) {
-    if (!started) return 0
-    if (mode === 'deterministic') {
-      return logicalElapsedMs
-    }
-    let now = Number.isFinite(nowMs) ? nowMs : Date.now()
-    let base = now - startTime - pausedDuration
-    if (paused) base = pausedAt - startTime - pausedDuration
-    return Math.max(0, base)
-  }
-
-  function start(nowMs) {
-    if (started || finished) return false
-    started = true
-    paused = false
-    startTime = Number.isFinite(nowMs) ? nowMs : Date.now()
-    logicalElapsedMs = 0
-    generator.reset()
-    return true
-  }
-
-  function pause(nowMs) {
-    if (!started || finished || paused) return false
-    paused = true
-    pausedAt = Number.isFinite(nowMs) ? nowMs : Date.now()
-    return true
-  }
-
-  function resume(nowMs) {
-    if (!started || finished || !paused) return false
-    if (mode !== 'deterministic') {
-      const now = Number.isFinite(nowMs) ? nowMs : Date.now()
-      pausedDuration += now - pausedAt
-    }
-    paused = false
-    return true
-  }
-
-  function cancel() {
-    if (finished) return false
-    finished = true
-    paused = false
-    return true
-  }
-
-  function nextFrameMs() {
-    return generator.nextFrameMs()
-  }
-
-  function runStep(args) {
-    if (paused || finished) {
-      return { advanced: false, finished, transferredBytes }
-    }
-    const frameMs = Number.isFinite(args && args.frameMs) ? args.frameMs : nextFrameMs()
-    if (mode === 'deterministic') {
-      logicalElapsedMs += Math.max(0, Math.round(frameMs || 0))
-    }
-    const elapsedMs = getElapsed(args && args.nowMs)
-    const stepResult = appendTransferStep({
-      seriesSeries: seriesCollection,
-      generator,
-      transferredBytes,
-      elapsedMs,
-      totalSize,
-      minSizeInc: merged.minSizeInc,
-      maxSizeInc: merged.maxSizeInc,
+class TransferController {
+  constructor(config) {
+    this.merged = Object.assign({}, TRANSFER_SIMULATION_DEFAULTS, TRANSFER_UI_DEFAULTS, config || {})
+    this.totalSize = Number.isFinite(this.merged.totalSize) && this.merged.totalSize > 0
+      ? this.merged.totalSize
+      : 0
+    this.seriesCount = Math.max(1, Math.floor(this.merged.seriesCount || 1))
+    const mode = this.merged.mode === 'deterministic' ? 'deterministic' : 'random'
+    this.runtime = new TransferControllerRuntime(mode)
+    this.stepper = new TransferControllerStepper({
+      merged: this.merged,
+      totalSize: this.totalSize,
+      seriesCount: this.seriesCount,
+      mode,
+      createSeriesCollection,
+      createFrameAndSizeGenerator,
+      createTransferRng,
+      appendTransferStep,
     })
-    transferredBytes = stepResult.transferredBytes
-    if (transferredBytes >= totalSize) {
-      finished = true
+  }
+
+  resetSeries() {
+    this.stepper.resetSeries()
+  }
+
+  resetGenerator() {
+    this.stepper.resetGenerator(this.runtime.mode)
+  }
+
+  reset() {
+    this.runtime.reset()
+    this.resetGenerator()
+    this.resetSeries()
+  }
+
+  setMode(nextMode) {
+    this.runtime.setMode(nextMode)
+    this.resetGenerator()
+  }
+
+  getElapsed(nowMs) {
+    return this.runtime.getElapsed(nowMs)
+  }
+
+  start(nowMs) {
+    const started = this.runtime.start(nowMs)
+    if (started) {
+      this.stepper.generator.reset()
+    }
+    return started
+  }
+
+  pause(nowMs) {
+    return this.runtime.pause(nowMs)
+  }
+
+  resume(nowMs) {
+    return this.runtime.resume(nowMs)
+  }
+
+  cancel() {
+    return this.runtime.cancel()
+  }
+
+  nextFrameMs() {
+    return this.stepper.nextFrameMs()
+  }
+
+  runStep(args) {
+    if (this.runtime.paused || this.runtime.finished) {
+      return { advanced: false, finished: this.runtime.finished, transferredBytes: this.stepper.transferredBytes }
+    }
+    const frameMs = Number.isFinite(args && args.frameMs) ? args.frameMs : this.nextFrameMs()
+    this.runtime.advanceDeterministic(frameMs)
+    const elapsedMs = this.getElapsed(args && args.nowMs)
+    const stepResult = this.stepper.applyStep(elapsedMs)
+    if (this.stepper.transferredBytes >= this.totalSize) {
+      this.runtime.finished = true
     }
     return {
       advanced: true,
       frameMs,
       elapsedMs,
-      transferredBytes,
+      transferredBytes: this.stepper.transferredBytes,
       outOfBoundsIndex: stepResult.outOfBoundsIndex,
-      finished,
+      finished: this.runtime.finished,
     }
   }
 
-  function getSeries(index, oneBased) {
-    const bounded = clampSeriesIndex(index, seriesCollection.length, oneBased)
-    return seriesCollection[oneBased ? bounded - 1 : bounded]
+  getSeries(index, oneBased) {
+    const bounded = clampSeriesIndex(index, this.stepper.seriesCollection.length, oneBased)
+    return this.stepper.seriesCollection[oneBased ? bounded - 1 : bounded]
   }
 
-  return {
-    reset,
-    setMode,
-    start,
-    pause,
-    resume,
-    cancel,
-    nextFrameMs,
-    runStep,
-    getElapsed,
-    getSeries,
-    getSeriesCollection() { return seriesCollection },
-    isStarted() { return started },
-    isPaused() { return paused },
-    isFinished() { return finished },
-    getMode() { return mode },
-    getTransferredBytes() { return transferredBytes },
-    getTotalSize() { return totalSize },
-  }
+  getSeriesCollection() { return this.stepper.seriesCollection }
+  isStarted() { return this.runtime.started }
+  isPaused() { return this.runtime.paused }
+  isFinished() { return this.runtime.finished }
+  getMode() { return this.runtime.mode }
+  getTransferredBytes() { return this.stepper.transferredBytes }
+  getTotalSize() { return this.totalSize }
+}
+
+function createTransferController(config) {
+  return new TransferController(config)
 }
 
 function buildDeterministicTransferSeries(config) {
@@ -372,6 +323,9 @@ function renderTransferGraphFrame(args) {
 export {
   TRANSFER_SIMULATION_DEFAULTS,
   TRANSFER_UI_DEFAULTS,
+  TransferControllerRuntime,
+  TransferControllerStepper,
+  TransferController,
   createSeededRandom,
   createTransferRng,
   clampSeriesIndex,
