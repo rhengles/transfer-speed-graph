@@ -1,4 +1,12 @@
 class TransferGraphModel {
+  now = Date.now
+  initialTotalSize = 0
+  totalSize = 0
+  pixelAverageWindow = 1
+  maxSpeedDecay = 0.5
+  maxSpeedHeadroom = 1.06
+  ignoreTrailingSpeedSample = true
+
   constructor(options) {
     this.setOptions(options)
 
@@ -17,14 +25,18 @@ class TransferGraphModel {
 
   setOptions(options) {
     const opts = options || {}
-    this.now = typeof opts.now === 'function' ? opts.now : Date.now
-    this.initialTotalSize = Number.isFinite(opts.totalSize) && opts.totalSize > 0 ? opts.totalSize : 0
+    this.now = typeof opts.now === 'function' ? opts.now : this.now
+    this.initialTotalSize = Number.isFinite(opts.totalSize) && opts.totalSize > 0 ? opts.totalSize : this.initialTotalSize
     this.totalSize = this.initialTotalSize
 
-    this.pixelAverageWindow = Math.max(1, Math.round(opts.pixelAverageWindow || 1))
-    this.maxSpeedDecay = Number.isFinite(opts.maxSpeedDecay) ? opts.maxSpeedDecay : 0.5
-    this.maxSpeedHeadroom = Number.isFinite(opts.maxSpeedHeadroom) ? opts.maxSpeedHeadroom : 1.06
-    this.ignoreTrailingSpeedSample = opts.ignoreTrailingSpeedSample !== false
+    this.pixelAverageWindow = Number.isFinite(opts.pixelAverageWindow)
+      ? Math.max(1, Math.round(opts.pixelAverageWindow))
+      : this.pixelAverageWindow
+    this.maxSpeedDecay = Number.isFinite(opts.maxSpeedDecay) ? opts.maxSpeedDecay : this.maxSpeedDecay
+    this.maxSpeedHeadroom = Number.isFinite(opts.maxSpeedHeadroom) ? opts.maxSpeedHeadroom : this.maxSpeedHeadroom
+    this.ignoreTrailingSpeedSample = typeof opts.ignoreTrailingSpeedSample === 'boolean'
+      ? opts.ignoreTrailingSpeedSample
+      : this.ignoreTrailingSpeedSample
   }
 
   isPauseVisualActive() {

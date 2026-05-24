@@ -9,30 +9,37 @@ function clampPixelAverageWindow(pixelAverageWindow, canvasWidth) {
 }
 
 class TransferGraphRenderer {
+  canvasCtx = undefined
+  canvasWidth = 416
+  canvasHeight = 72
+  formatSpeed = (speedBps) => bytesSize(speedBps).join(' ') + '/s'
+  pausedRenderOptions = {
+    colorBackground: '#f4e499',
+    colorBackgroundStroke: '#d1c06a',
+    colorOverlay: '#b19704',
+  }
+  cancelledRenderOptions = {
+    colorBackground: '#d6d6d6',
+    colorBackgroundStroke: '#b8b8b8',
+    colorOverlay: '#8a8a8a',
+  }
+  buildGraphOptions = () => {}
+  buildRenderOptions = () => {}
+
   constructor(options) {
     this.setOptions(options)
   }
 
   setOptions(options) {
     const opts = options || {}
-    this.canvasCtx = opts.canvasCtx
-    this.canvasWidth = Number.isFinite(opts.canvasWidth) ? Math.floor(opts.canvasWidth) : 416
-    this.canvasHeight = Number.isFinite(opts.canvasHeight) ? Math.floor(opts.canvasHeight) : 72
-    this.formatSpeed = typeof opts.formatSpeed === 'function' ? opts.formatSpeed : function (speedBps) {
-      return bytesSize(speedBps).join(' ') + '/s'
-    }
-    this.pausedRenderOptions = Object.assign({
-      colorBackground: '#f4e499',
-      colorBackgroundStroke: '#d1c06a',
-      colorOverlay: '#b19704',
-    }, opts.pausedRenderOptions || {})
-    this.cancelledRenderOptions = Object.assign({
-      colorBackground: '#d6d6d6',
-      colorBackgroundStroke: '#b8b8b8',
-      colorOverlay: '#8a8a8a',
-    }, opts.cancelledRenderOptions || {})
-    this.buildGraphOptions = typeof opts.buildGraphOptions === 'function' ? opts.buildGraphOptions : null
-    this.buildRenderOptions = typeof opts.buildRenderOptions === 'function' ? opts.buildRenderOptions : null
+    this.canvasCtx = opts.canvasCtx ?? this.canvasCtx
+    this.canvasWidth = Number.isFinite(opts.canvasWidth) ? Math.floor(opts.canvasWidth) : this.canvasWidth
+    this.canvasHeight = Number.isFinite(opts.canvasHeight) ? Math.floor(opts.canvasHeight) : this.canvasHeight
+    this.formatSpeed = opts.formatSpeed instanceof Function ? opts.formatSpeed : this.formatSpeed
+    this.pausedRenderOptions = Object.assign({}, this.pausedRenderOptions, opts.pausedRenderOptions || {})
+    this.cancelledRenderOptions = Object.assign({}, this.cancelledRenderOptions, opts.cancelledRenderOptions || {})
+    this.buildGraphOptions = opts.buildGraphOptions instanceof Function ? opts.buildGraphOptions : this.buildGraphOptions
+    this.buildRenderOptions = opts.buildRenderOptions instanceof Function ? opts.buildRenderOptions : this.buildRenderOptions
   }
 
   render(model) {
@@ -56,12 +63,8 @@ class TransferGraphRenderer {
       backgroundValue: model.finished && !isCancelled ? model.totalSize : undefined,
     }
 
-    if (this.buildGraphOptions) {
-      graphOptions = Object.assign(graphOptions, this.buildGraphOptions(model.getState()) || {})
-    }
-    if (this.buildRenderOptions) {
-      renderOptions = Object.assign(renderOptions, this.buildRenderOptions(model.getState()) || {})
-    }
+    graphOptions = Object.assign(graphOptions, this.buildGraphOptions(model.getState()))
+    renderOptions = Object.assign(renderOptions, this.buildRenderOptions(model.getState()))
 
     const boundedPixelAverageWindow = clampPixelAverageWindow(
       renderOptions.pixelAverageWindow ?? graphOptions.pixelAverageWindow,

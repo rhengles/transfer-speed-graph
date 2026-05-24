@@ -38,9 +38,6 @@ class TransferGraphController {
       buildGraphOptions,
       buildRenderOptions,
     })
-
-    this.notifyControls()
-    this.notifyState()
   }
 
   onFrame() {}
