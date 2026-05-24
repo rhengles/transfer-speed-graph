@@ -10,39 +10,58 @@ function asLabel(formatResult) {
 
 class TransferGraphController {
   constructor(options) {
-    this.opts = options || {}
-    this.initialTotalSize = Number.isFinite(this.opts.totalSize) && this.opts.totalSize > 0
-      ? this.opts.totalSize
+    const opts = options || {}
+    const {
+      totalSize,
+      now,
+      formatSpeed,
+      onFrame,
+      onControls,
+      onStateChange,
+      ctx,
+      canvasWidth,
+      canvasHeight,
+      pausedColors,
+      buildGraphOptions,
+      buildRenderOptions,
+      pixelAverageWindow,
+      maxSpeedDecay,
+      maxSpeedHeadroom,
+      ignoreTrailingSpeedSample,
+    } = opts
+
+    this.initialTotalSize = Number.isFinite(totalSize) && totalSize > 0
+      ? totalSize
       : TRANSFER_UI_DEFAULTS.totalSize
-    this.now = typeof this.opts.now === 'function' ? this.opts.now : Date.now
-    this.formatSpeed = typeof this.opts.formatSpeed === 'function'
-      ? this.opts.formatSpeed
+    this.now = typeof now === 'function' ? now : Date.now
+    this.formatSpeed = typeof formatSpeed === 'function'
+      ? formatSpeed
       : function (speedBps) { return asLabel(bytesSize(speedBps)) + '/s' }
 
-    this.onFrame = typeof this.opts.onFrame === 'function' ? this.opts.onFrame : function () {}
-    this.onControls = typeof this.opts.onControls === 'function' ? this.opts.onControls : function () {}
-    this.onStateChange = typeof this.opts.onStateChange === 'function' ? this.opts.onStateChange : function () {}
+    this.onFrame = typeof onFrame === 'function' ? onFrame : function () {}
+    this.onControls = typeof onControls === 'function' ? onControls : function () {}
+    this.onStateChange = typeof onStateChange === 'function' ? onStateChange : function () {}
 
     this.model = new TransferGraphModel({
       totalSize: this.initialTotalSize,
-      canvasWidth: this.opts.canvasWidth,
+      canvasWidth,
       now: this.now,
-      pixelAverageWindow: this.opts.pixelAverageWindow,
-      maxSpeedDecay: this.opts.maxSpeedDecay,
-      maxSpeedHeadroom: this.opts.maxSpeedHeadroom,
-      ignoreTrailingSpeedSample: this.opts.ignoreTrailingSpeedSample,
+      pixelAverageWindow,
+      maxSpeedDecay,
+      maxSpeedHeadroom,
+      ignoreTrailingSpeedSample,
     })
 
     this.seriesConfig = { maxValue: this.model.totalSize }
 
     this.renderer = new TransferGraphRenderer({
-      ctx: this.opts.ctx,
-      canvasWidth: this.opts.canvasWidth,
-      canvasHeight: this.opts.canvasHeight,
+      ctx,
+      canvasWidth,
+      canvasHeight,
       formatSpeed: this.formatSpeed,
-      pausedColors: this.opts.pausedColors,
-      buildGraphOptions: this.opts.buildGraphOptions,
-      buildRenderOptions: this.opts.buildRenderOptions,
+      pausedColors,
+      buildGraphOptions,
+      buildRenderOptions,
     })
 
     this.notifyControls()

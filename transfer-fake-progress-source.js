@@ -8,26 +8,44 @@ import { TransferSeriesSelection } from './transfer-series-selection.js'
 
 class FakeProgressSource {
   constructor(options) {
-    this.opts = options || {}
-    this.now = typeof this.opts.now === 'function' ? this.opts.now : Date.now
-    this.schedule = typeof this.opts.schedule === 'function' ? this.opts.schedule : setTimeout
-    this.unschedule = typeof this.opts.unschedule === 'function' ? this.opts.unschedule : clearTimeout
+    const opts = options || {}
+    const {
+      now,
+      schedule,
+      unschedule,
+      onStart,
+      onProgress,
+      onSeriesReplace,
+      onFinish,
+      onCancel,
+      onPauseState,
+      onControls,
+      onOutOfBounds,
+      seriesCount,
+      seriesAverageActiveIndex,
+      totalSize,
+    } = opts
 
-    this.onStart = typeof this.opts.onStart === 'function' ? this.opts.onStart : function () {}
-    this.onProgress = typeof this.opts.onProgress === 'function' ? this.opts.onProgress : function () {}
-    this.onSeriesReplace = typeof this.opts.onSeriesReplace === 'function' ? this.opts.onSeriesReplace : function () {}
-    this.onFinish = typeof this.opts.onFinish === 'function' ? this.opts.onFinish : function () {}
-    this.onCancel = typeof this.opts.onCancel === 'function' ? this.opts.onCancel : function () {}
-    this.onPauseState = typeof this.opts.onPauseState === 'function' ? this.opts.onPauseState : function () {}
-    this.onControls = typeof this.opts.onControls === 'function' ? this.opts.onControls : function () {}
-    this.onOutOfBounds = typeof this.opts.onOutOfBounds === 'function' ? this.opts.onOutOfBounds : function (seriesIndex) {
+    this.totalSize = totalSize || TRANSFER_UI_DEFAULTS.totalSize
+    this.now = typeof now === 'function' ? now : Date.now
+    this.schedule = typeof schedule === 'function' ? schedule : setTimeout
+    this.unschedule = typeof unschedule === 'function' ? unschedule : clearTimeout
+
+    this.onStart = typeof onStart === 'function' ? onStart : function () {}
+    this.onProgress = typeof onProgress === 'function' ? onProgress : function () {}
+    this.onSeriesReplace = typeof onSeriesReplace === 'function' ? onSeriesReplace : function () {}
+    this.onFinish = typeof onFinish === 'function' ? onFinish : function () {}
+    this.onCancel = typeof onCancel === 'function' ? onCancel : function () {}
+    this.onPauseState = typeof onPauseState === 'function' ? onPauseState : function () {}
+    this.onControls = typeof onControls === 'function' ? onControls : function () {}
+    this.onOutOfBounds = typeof onOutOfBounds === 'function' ? onOutOfBounds : function (seriesIndex) {
       console.warn('Generated size out of bounds at index ' + seriesIndex)
     }
 
     this.seriesSelection = new TransferSeriesSelection({
       clampSeriesIndex,
-      seriesCount: this.opts.seriesCount || TRANSFER_UI_DEFAULTS.seriesCount || 1,
-      seriesActiveIndex: this.opts.seriesAverageActiveIndex || 1,
+      seriesCount: seriesCount || TRANSFER_UI_DEFAULTS.seriesCount || 1,
+      seriesActiveIndex: seriesAverageActiveIndex || 1,
     })
     this.seriesCount = this.seriesSelection.seriesCount
     this.controller = null
@@ -96,7 +114,7 @@ class FakeProgressSource {
   start(mode) {
     this.clearTimer()
     this.controller = new TransferController({
-      totalSize: this.opts.totalSize || TRANSFER_UI_DEFAULTS.totalSize,
+      totalSize: this.totalSize,
       seriesCount: this.seriesCount,
       mode: mode || 'random',
     })
