@@ -9,16 +9,16 @@ class TransferGraphRenderer {
     this.formatSpeed = typeof opts.formatSpeed === 'function' ? opts.formatSpeed : function (speedBps) {
       return String(speedBps)
     }
-    this.pausedColors = Object.assign({
-      background: '#f4e499',
-      backgroundStroke: '#d1c06a',
-      overlay: '#b19704',
-    }, opts.pausedColors || {})
-    this.cancelledColors = Object.assign({
-      background: '#d6d6d6',
-      backgroundStroke: '#b8b8b8',
-      overlay: '#8a8a8a',
-    }, opts.cancelledColors || {})
+    this.pausedRenderOptions = Object.assign({
+      colorBackground: '#f4e499',
+      colorBackgroundStroke: '#d1c06a',
+      colorOverlay: '#b19704',
+    }, opts.pausedRenderOptions || {})
+    this.cancelledRenderOptions = Object.assign({
+      colorBackground: '#d6d6d6',
+      colorBackgroundStroke: '#b8b8b8',
+      colorOverlay: '#8a8a8a',
+    }, opts.cancelledRenderOptions || {})
     this.buildGraphOptions = typeof opts.buildGraphOptions === 'function' ? opts.buildGraphOptions : null
     this.buildRenderOptions = typeof opts.buildRenderOptions === 'function' ? opts.buildRenderOptions : null
   }
@@ -35,26 +35,13 @@ class TransferGraphRenderer {
     }
 
     let renderOptions = {
+      ...(isCancelled ? this.cancelledRenderOptions : undefined),
+      ...(isPaused ? this.pausedRenderOptions : undefined),
       speedLabelFormatter: (speed) => this.formatSpeed(speed * 1000),
       pixelAverageWindow: model.pixelAverageWindow,
       ignoreTrailingSpeedSample: model.ignoreTrailingSpeedSample,
       // Keep canceled transfers frozen at current progress instead of forcing full completion fill.
       backgroundValue: model.finished && !isCancelled ? model.totalSize : undefined,
-      colorBackground: isCancelled
-        ? this.cancelledColors.background
-        : isPaused
-        ? this.pausedColors.background
-        : undefined,
-      colorBackgroundStroke: isCancelled
-        ? this.cancelledColors.backgroundStroke
-        : isPaused
-        ? this.pausedColors.backgroundStroke
-        : undefined,
-      colorOverlay: isCancelled
-        ? this.cancelledColors.overlay
-        : isPaused
-        ? this.pausedColors.overlay
-        : undefined,
     }
 
     if (this.buildGraphOptions) {
