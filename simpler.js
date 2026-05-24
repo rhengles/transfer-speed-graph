@@ -488,12 +488,12 @@ function resolveGraphMaxSpeed(localMaxAvgSpeed, previousMaxSpeed, renderOptions)
 	return Math.max(localMax, decayedMax) * headroom
 }
 
-function calcAverageSpeedsForResolution(config, stepList, { w: canvasWidth, h: canvasHeight }, renderOptions) {
+function calcAverageSpeedsForResolution(maxValue, stepList, { w: canvasWidth, h: canvasHeight }, renderOptions) {
 	if (!stepList.length) return
+	if (!(Number.isFinite(maxValue) && maxValue > 0)) return
 	const lastStep = stepList[stepList.length - 1]
 	const [, lastValue] = lastStep
-	// const maxValue = config.maxValue
-	const lastX = lastValue / config.maxValue * (canvasWidth - 1)
+	const lastX = lastValue / maxValue * (canvasWidth - 1)
 	if (lastX) {
 		const pixelsPerValue = lastValue ? lastX / lastValue : 0
 		// With this, we should get the resolution of 1px per datapoint
@@ -551,7 +551,7 @@ function calcAverageSpeedsForResolution(config, stepList, { w: canvasWidth, h: c
 		return {
 			lastX,
 			lastValue,
-			maxValue: config.maxValue,
+			maxValue,
 			pixelsPerValue,
 			avgResolution,
 			avgWithSpeeds: avgWithSpeedsSmoothed,
@@ -567,7 +567,7 @@ function calcAverageSpeedsForResolution(config, stepList, { w: canvasWidth, h: c
 	}
 }
 
-function renderStepToCanvas(config, stepList, canvasCtx, { w: canvasWidth, h: canvasHeight }, globalMaxSpeed, renderOptions) {
+function renderStepToCanvas(maxValue, stepList, canvasCtx, { w: canvasWidth, h: canvasHeight }, globalMaxSpeed, renderOptions) {
 	const {
 		colorBackground = '#a1e992',
 		colorBackgroundStroke = '#8dd07a',
@@ -583,12 +583,13 @@ function renderStepToCanvas(config, stepList, canvasCtx, { w: canvasWidth, h: ca
 		ignoreTrailingSpeedSample = true,
 	} = renderOptions || {}
 	if (!stepList.length) return
+	if (!(Number.isFinite(maxValue) && maxValue > 0)) return
 	const lastStep = stepList[stepList.length - 1]
 	const [, lastValue] = lastStep
 	const backgroundValue = Number.isFinite(renderOptions?.backgroundValue)
-		? Math.min(config.maxValue, Math.max(0, renderOptions.backgroundValue))
+		? Math.min(maxValue, Math.max(0, renderOptions.backgroundValue))
 		: lastValue
-	const lastX = backgroundValue / config.maxValue * (canvasWidth - 1)
+	const lastX = backgroundValue / maxValue * (canvasWidth - 1)
 	let currentSpeedY = undefined
 
 	canvasCtx.save()
@@ -624,7 +625,7 @@ function renderStepToCanvas(config, stepList, canvasCtx, { w: canvasWidth, h: ca
 
 	if (lastX) {
 		const avgResult = calcAverageSpeedsForResolution(
-			config,
+			maxValue,
 			stepList,
 			{ w: canvasWidth, h: canvasHeight },
 			Object.assign({}, renderOptions, { ignoreTrailingSpeedSample }),

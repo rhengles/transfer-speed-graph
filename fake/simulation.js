@@ -1,5 +1,5 @@
-import { TransferControllerRuntime } from './transfer-controller-runtime.js'
-import { TransferControllerStepper } from './transfer-controller-stepper.js'
+import { TransferControllerRuntime } from './controller-runtime.js'
+import { TransferControllerStepper } from './controller-stepper.js'
 import {
   TRANSFER_SIMULATION_DEFAULTS,
   clampSeriesIndex,
@@ -7,7 +7,7 @@ import {
   createSeriesCollection,
   createFrameAndSizeGenerator,
   appendTransferStep,
-} from './transfer-fake-series.js'
+} from './series.js'
 
 class TransferController {
   constructor(config) {

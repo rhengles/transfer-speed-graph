@@ -24,7 +24,6 @@ class TransferGraphRenderer {
   }
 
   render(model) {
-    const seriesConfig = { maxValue: model.totalSize }
     const isCancelled = model.cancelled === true
     const usePausedPalette = !isCancelled && model.isPauseVisualActive()
 
@@ -66,7 +65,7 @@ class TransferGraphRenderer {
     }
 
     return renderTransferGraphFrame({
-      seriesConfig,
+      maxValue: model.totalSize,
       series: model.series,
       ctx: this.ctx,
       size: { w: this.canvasWidth, h: this.canvasHeight },

@@ -1,11 +1,11 @@
 import {
   TransferController,
-} from './transfer-simulation.js'
+} from './simulation.js'
 import {
   clampSeriesIndex,
-} from './transfer-fake-series.js'
-import { TransferTimerScheduler } from './transfer-timer-scheduler.js'
-import { TransferSeriesSelection } from './transfer-series-selection.js'
+} from './series.js'
+import { TransferTimerScheduler } from './timer-scheduler.js'
+import { TransferSeriesSelection } from './series-selection.js'
 
 const TRANSFER_UI_DEFAULTS = {
   totalSize: 256 * 1024 * 1024,

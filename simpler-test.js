@@ -21,8 +21,8 @@ import {
 	buildDeterministicTransferSeries,
 	clampSeriesIndex,
 	createSeededRandom,
-} from './transfer-fake-series.js'
-import { TRANSFER_UI_DEFAULTS } from './transfer-fake-progress-source.js'
+} from './fake/series.js'
+import { TRANSFER_UI_DEFAULTS } from './fake/progress-source.js'
 import { renderTransferGraphFrame } from './transfer-graph-frame.js'
 import { createCanvas } from 'canvas'
 
@@ -106,7 +106,7 @@ function getSnapshotAverageSpeedsAtResolution(seriesConfig, series, { w: canvasW
 	series.forEach((_, index) => {
 		const stepList = series.slice(0, index + 1)
 		const avgResult = calcAverageSpeedsForResolution(
-			seriesConfig,
+			seriesConfig.maxValue,
 			stepList,
 			{ w: canvasWidth, h: canvasHeight },
 		)
@@ -139,7 +139,7 @@ function renderSnapshotToCanvas(snapshot) {
 		ctx.save()
 		ctx.translate(0, offsetY)
 		runningMaxSpeed = renderTransferGraphFrame({
-			seriesConfig: snapshot.seriesConfig,
+			maxValue: snapshot.seriesConfig.maxValue,
 			series: stepList,
 			ctx,
 			size: { w: CANVAS_WIDTH, h: CANVAS_HEIGHT },
@@ -166,7 +166,7 @@ function renderProgressMilestoneSnapshotToCanvas(seriesConfig, series, progressL
 		ctx.save()
 		ctx.translate(0, offsetY)
 		renderTransferGraphFrame({
-			seriesConfig,
+			maxValue: seriesConfig.maxValue,
 			series: stepList,
 			ctx,
 			size: { w: CANVAS_WIDTH, h: CANVAS_HEIGHT },

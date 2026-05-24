@@ -1,6 +1,6 @@
 import { printTime, bytesSize } from './lib.js'
 import { TransferGraphController } from './transfer-graph-controller.js'
-import { FakeProgressSource, TRANSFER_UI_DEFAULTS } from './transfer-fake-progress-source.js'
+import { FakeProgressSource, TRANSFER_UI_DEFAULTS } from './fake/progress-source.js'
 
   // -- constants ------------------------------------------------------------
   var TOTAL_SIZE = TRANSFER_UI_DEFAULTS.totalSize

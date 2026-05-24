@@ -5,7 +5,7 @@ import {
 } from './simpler.js'
 
 function renderTransferGraphFrame(args) {
-  const seriesConfig = args.seriesConfig
+  const maxValue = Number.isFinite(args.maxValue) ? args.maxValue : 0
   const series = args.series
   const ctx = args.ctx
   const size = args.size
@@ -22,7 +22,7 @@ function renderTransferGraphFrame(args) {
   }
 
   if (manageMaxSpeed && series.length > 1) {
-    const avgResult = calcAverageSpeedsForResolution(seriesConfig, series, size, {
+    const avgResult = calcAverageSpeedsForResolution(maxValue, series, size, {
       pixelAverageWindow: graphOptions.pixelAverageWindow,
       ignoreTrailingSpeedSample: graphOptions.ignoreTrailingSpeedSample !== false,
     })
@@ -50,7 +50,7 @@ function renderTransferGraphFrame(args) {
   }
 
   renderStepToCanvas(
-    seriesConfig,
+    maxValue,
     series,
     ctx,
     size,
