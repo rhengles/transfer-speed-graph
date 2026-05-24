@@ -1,4 +1,12 @@
+import { bytesSize } from './lib.js'
 import { renderTransferGraphFrame } from './transfer-graph-frame.js'
+
+function clampPixelAverageWindow(pixelAverageWindow, canvasWidth) {
+  const maxAllowed = Math.max(1, Math.floor(canvasWidth || 1))
+  const nextWindow = Math.floor(pixelAverageWindow)
+  if (!Number.isFinite(nextWindow)) return 1
+  return Math.min(Math.max(1, nextWindow), maxAllowed)
+}
 
 class TransferGraphRenderer {
   constructor(options) {
@@ -7,7 +15,7 @@ class TransferGraphRenderer {
     this.canvasWidth = Number.isFinite(opts.canvasWidth) ? Math.floor(opts.canvasWidth) : 416
     this.canvasHeight = Number.isFinite(opts.canvasHeight) ? Math.floor(opts.canvasHeight) : 72
     this.formatSpeed = typeof opts.formatSpeed === 'function' ? opts.formatSpeed : function (speedBps) {
-      return String(speedBps)
+      return bytesSize(speedBps).join(' ') + '/s'
     }
     this.pausedRenderOptions = Object.assign({
       colorBackground: '#f4e499',
@@ -50,6 +58,13 @@ class TransferGraphRenderer {
     if (this.buildRenderOptions) {
       renderOptions = Object.assign(renderOptions, this.buildRenderOptions(model.getState()) || {})
     }
+
+    const boundedPixelAverageWindow = clampPixelAverageWindow(
+      renderOptions.pixelAverageWindow ?? graphOptions.pixelAverageWindow,
+      this.canvasWidth
+    )
+    graphOptions.pixelAverageWindow = boundedPixelAverageWindow
+    renderOptions.pixelAverageWindow = boundedPixelAverageWindow
 
     return renderTransferGraphFrame({
       maxValue: model.totalSize,

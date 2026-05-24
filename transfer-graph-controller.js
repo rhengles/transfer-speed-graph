@@ -1,11 +1,5 @@
-import { bytesSize } from './lib.js'
 import { TransferGraphModel } from './transfer-graph-model.js'
 import { TransferGraphRenderer } from './transfer-graph-renderer.js'
-
-function asLabel(formatResult) {
-  if (Array.isArray(formatResult)) return formatResult.join(' ')
-  return String(formatResult)
-}
 
 class TransferGraphController {
   constructor(options) {
@@ -13,9 +7,6 @@ class TransferGraphController {
     const {
       now,
       formatSpeed,
-      onFrame,
-      onControls,
-      onStateChange,
       canvasCtx,
       canvasWidth,
       canvasHeight,
@@ -29,18 +20,8 @@ class TransferGraphController {
       ignoreTrailingSpeedSample,
     } = opts
 
-    this.now = typeof now === 'function' ? now : Date.now
-    this.formatSpeed = typeof formatSpeed === 'function'
-      ? formatSpeed
-      : function (speedBps) { return asLabel(bytesSize(speedBps)) + '/s' }
-
-    this.onFrame = typeof onFrame === 'function' ? onFrame : function () {}
-    this.onControls = typeof onControls === 'function' ? onControls : function () {}
-    this.onStateChange = typeof onStateChange === 'function' ? onStateChange : function () {}
-
     this.model = new TransferGraphModel({
-      canvasWidth,
-      now: this.now,
+      now,
       pixelAverageWindow,
       maxSpeedDecay,
       maxSpeedHeadroom,
@@ -51,7 +32,7 @@ class TransferGraphController {
       canvasCtx,
       canvasWidth,
       canvasHeight,
-      formatSpeed: this.formatSpeed,
+      formatSpeed,
       pausedRenderOptions,
       cancelledRenderOptions,
       buildGraphOptions,
@@ -59,6 +40,23 @@ class TransferGraphController {
     })
 
     this.notifyControls()
+    this.notifyState()
+  }
+
+  onFrame() {}
+  setOnFrame(onFrame) {
+    this.onFrame = typeof onFrame === 'function' ? onFrame : function () {}
+  }
+
+  onControls() {}
+  setOnControls(onControls) {
+    this.onControls = typeof onControls === 'function' ? onControls : function () {}
+    this.notifyControls()
+  }
+
+  onStateChange() {}
+  setOnStateChange(onStateChange) {
+    this.onStateChange = typeof onStateChange === 'function' ? onStateChange : function () {}
     this.notifyState()
   }
 

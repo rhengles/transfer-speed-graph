@@ -4,9 +4,8 @@ class TransferGraphModel {
     this.now = typeof opts.now === 'function' ? opts.now : Date.now
     this.initialTotalSize = Number.isFinite(opts.totalSize) && opts.totalSize > 0 ? opts.totalSize : 0
     this.totalSize = this.initialTotalSize
-    this.canvasWidth = Number.isFinite(opts.canvasWidth) ? Math.floor(opts.canvasWidth) : 416
 
-    this.pixelAverageWindow = Math.max(1, Math.min(this.canvasWidth, Math.round(opts.pixelAverageWindow || 1)))
+    this.pixelAverageWindow = Math.max(1, Math.round(opts.pixelAverageWindow || 1))
     this.maxSpeedDecay = Number.isFinite(opts.maxSpeedDecay) ? opts.maxSpeedDecay : 0.5
     this.maxSpeedHeadroom = Number.isFinite(opts.maxSpeedHeadroom) ? opts.maxSpeedHeadroom : 1.06
     this.ignoreTrailingSpeedSample = opts.ignoreTrailingSpeedSample !== false
@@ -240,7 +239,7 @@ class TransferGraphModel {
   }
 
   setPixelAverageWindow(nextWindow) {
-    const bounded = Math.max(1, Math.min(this.canvasWidth, Math.round(nextWindow)))
+    const bounded = Math.max(1, Math.round(nextWindow))
     if (bounded === this.pixelAverageWindow) return false
     this.pixelAverageWindow = bounded
     return true

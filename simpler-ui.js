@@ -269,11 +269,11 @@ import { FakeProgressSource, TRANSFER_UI_DEFAULTS } from './fake/progress-source
     canvasCtx: canvasCtx,
     canvasWidth: CANVAS_W,
     canvasHeight: CANVAS_H,
-    // totalSize: TOTAL_SIZE,
-    onFrame: applyFrameView,
-    onControls: applyControlsView,
-    onStateChange: applyStateView,
   })
+
+  app.setOnFrame(applyFrameView)
+  app.setOnControls(applyControlsView)
+  app.setOnStateChange(applyStateView)
 
   var fakeSource = new FakeProgressSource({
     totalSize: TOTAL_SIZE,
