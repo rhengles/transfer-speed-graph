@@ -1,11 +1,15 @@
 # Transfer Speed Graph
 
+![Transfer Speed Graph](artwork/github-preview-720.png)
+
 A lightweight, modular transfer-speed graph inspired by the Windows 8 file transfer dialog, with support for:
 
 - Real transfer integration (download/upload)
 - Deterministic and random fake transfer simulation
 - Pause/cancel/finish states
 - Highly configurable graph smoothing and dynamic Y-scale behavior
+
+### Real Example
 
 [Live homepage](https://speed-transfer.arijs.org/)
 

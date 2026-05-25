@@ -89,9 +89,9 @@ Troubleshooting by symptom:
 - Run `node simpler-test.js` to regenerate the 21-stage gallery in snapshots/simpler.png; each row adds a new datapoint to the bright bar (total progress) while the dark overlay reuses the prior shape and fills the newly completed region using the max speed of all the datapoints available at each stage for vertical scaling.
 - Inspect snapshots/simpler.json alongside the PNG to understand discrepancies: it logs the seeded input series, delta transforms, random segments, and printed averages so you can diff/debug visual glitches without stepping through the renderer.
 
-## Inspiration: Windows 10 file transfer speed graph
+## Inspiration: Windows 8 file transfer speed graph
 
-Windows 10 provides a built-in file transfer speed graph that visually tracks your copy and move operations. To see this graph in File Explorer, simply click the "More details" arrow at the bottom of the transfer window.
+Windows 8 provides a built-in file transfer speed graph that visually tracks your copy and move operations. To see this graph in File Explorer, simply click the "More details" arrow at the bottom of the transfer window.
 
 See the images in the /inspiration folder for examples of the graph in action.
 
