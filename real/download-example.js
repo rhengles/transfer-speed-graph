@@ -15,12 +15,20 @@ function startRealDownloadExample(options) {
   setActiveMode('download')
   setActiveNetworkAbort(abortController)
 
+  // To display the transfer speed graph, you create an instance of
+  // TransferGraphController, configure it with renderer options, and
+  // then start a transfer with the total size. After that, you can
+  // push progress updates as they happen, and call finishTransfer
+  // when done. The controller will handle the rest (calculating
+  // speeds, rendering frames, etc).
+  // 
+  // const controller = new TransferGraphController()
+
   controller.setRendererOptions({
     canvasCtx,
     canvasWidth,
     canvasHeight,
   })
-  controller.startTransfer({ totalSize: endpoint.downloadSize })
 
   return fetch(endpoint.downloadUrl, { signal: abortController.signal }).then(function (res) {
     if (!res.ok || !res.body) {
@@ -33,18 +41,20 @@ function startRealDownloadExample(options) {
       : endpoint.downloadSize
 
     const reader = res.body.getReader()
-    let loaded = 0
+    let transferredBytes = 0
+
+    controller.startTransfer({ totalSize })
 
     function pump() {
       return reader.read().then(function (chunk) {
         if (chunk.done) {
-          controller.finishTransfer({ transferredBytes: loaded, totalSize: totalSize })
+          controller.finishTransfer({ transferredBytes, totalSize })
           setActiveNetworkAbort(null)
           return
         }
 
-        loaded += chunk.value.byteLength
-        controller.pushProgress({ transferredBytes: loaded, totalSize: totalSize })
+        transferredBytes += chunk.value.byteLength
+        controller.pushProgress({ transferredBytes, totalSize })
         return pump()
       })
     }

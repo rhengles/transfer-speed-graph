@@ -1,8 +1,8 @@
 const TRANSFER_SIMULATION_DEFAULTS = {
   minFrame: 20,
   maxFrame: 3020,
-  minRepeat: 1,
-  maxRepeat: 6,
+  minFrameRepeat: 1,
+  maxFrameRepeat: 1,
   minSizeInc: 8,
   maxSizeInc: 1024 * 1024 + 8,
   deterministicSeed: 0xC0FFEE,
@@ -58,7 +58,7 @@ function createFrameAndSizeGenerator(config, rngFn) {
     } else {
       frameCurrent = getRand(merged.minFrame, merged.maxFrame)
       frameRepeatIdx = 0
-      frameRepeatCurrent = getRand(merged.minRepeat, merged.maxRepeat)
+      frameRepeatCurrent = getRand(merged.minFrameRepeat, merged.maxFrameRepeat)
     }
     return frameCurrent
   }

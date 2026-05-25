@@ -275,6 +275,15 @@ import { startRealUploadExample as runRealUploadExample } from './real/upload-ex
 
   var fakeSource = new FakeProgressSource({
     controller: app,
+    simulationOptions: {
+      minFrame: 120,
+      maxFrame: 420,
+      minFrameRepeat: 4,
+      maxFrameRepeat: 8,
+      minSizeInc: 1024 + 8,
+      maxSizeInc: 512 * 1024 + 8,
+      deterministicSeed: 0xC0FFEE,
+    },
     totalSize: TOTAL_SIZE,
     seriesCount: SERIES_COUNT,
     onControls: applySeriesControlsView,

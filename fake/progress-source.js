@@ -17,6 +17,8 @@ class FakeProgressSource {
     const opts = options || {}
     const {
       controller,
+      simulationOptions,
+      totalSize,
       now,
       schedule,
       unschedule,
@@ -30,9 +32,9 @@ class FakeProgressSource {
       onOutOfBounds,
       seriesCount,
       seriesAverageActiveIndex,
-      totalSize,
     } = opts
 
+    this.simulationOptions = simulationOptions
     this.totalSize = totalSize || TRANSFER_UI_DEFAULTS.totalSize
     this.now = typeof now === 'function' ? now : Date.now
     this.schedule = typeof schedule === 'function' ? schedule : setTimeout
@@ -165,6 +167,7 @@ class FakeProgressSource {
   start(mode) {
     this.clearTimer()
     this.controller = new TransferController({
+      ...this.simulationOptions,
       totalSize: this.totalSize,
       seriesCount: this.seriesCount,
       mode: mode || 'random',
