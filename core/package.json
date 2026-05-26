@@ -6,6 +6,12 @@
   "type": "module",
   "author": "rhengles@gmail.com",
   "license": "MIT",
+  "homepage": "https://github.com/rhengles/transfer-speed-graph",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rhengles/transfer-speed-graph",
+    "directory": "core"
+  },
   "files": [
     "dist",
     "frame.js",

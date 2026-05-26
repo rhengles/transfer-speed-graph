@@ -174,16 +174,4 @@ This allows both realistic noisy profiles and stable deterministic test profiles
 
 ## Development
 
-Install dependencies:
-
-```bash
-npm install
-```
-
-Run tests / snapshot checks:
-
-```bash
-npm test
-```
-
-Open the demo UI by loading [index.html](index.html) in a browser.
+See repo at https://github.com/rhengles/transfer-speed-graph
