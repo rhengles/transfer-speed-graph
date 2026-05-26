@@ -1,6 +1,6 @@
 # Transfer Speed Graph
 
-![Transfer Speed Graph](artwork/github-preview-720.png)
+![Transfer Speed Graph](img/artwork/github-preview-720.png)
 
 A lightweight, modular transfer-speed graph inspired by the Windows 8 file transfer dialog, with support for:
 
@@ -13,7 +13,7 @@ A lightweight, modular transfer-speed graph inspired by the Windows 8 file trans
 
 [Live homepage](https://speed-transfer.arijs.org/)
 
-![Deterministic transfer at 50%](screenshots/deterministic-50perc.png)
+![Deterministic transfer at 50%](img/screenshots/deterministic-50perc.png)
 
 ## Quick Usage
 
@@ -118,11 +118,11 @@ Source example: [real/upload-example.js](real/upload-example.js)
 
 Paused state:
 
-![Paused transfer state](screenshots/deterministic-series16-67perc-paused.png)
+![Paused transfer state](img/screenshots/deterministic-series16-67perc-paused.png)
 
 Cancelled state:
 
-![Cancelled transfer state](screenshots/deterministic-series16-67perc-cancelled.png)
+![Cancelled transfer state](img/screenshots/deterministic-series16-67perc-cancelled.png)
 
 ## Why This Library Is Strong
 
