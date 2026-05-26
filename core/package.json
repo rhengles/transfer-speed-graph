@@ -1,6 +1,6 @@
 {
   "name": "@arijs/transfer-speed-graph",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A lightweight, modular transfer speed graph inspired by the Windows 8 file transfer dialog, with support for: Real transfer integration (download/upload), Deterministic and random fake transfer simulation, Pause/cancel/finish states, and Highly configurable graph smoothing and dynamic Y-scale behavior",
   "access": "public",
   "type": "module",
