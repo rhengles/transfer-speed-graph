@@ -3,6 +3,7 @@ import { TransferGraph } from './core/main.js'
 import { FakeProgressSource, TRANSFER_UI_DEFAULTS } from './fake/progress-source.js'
 import { startRealDownloadExample as runRealDownloadExample } from './real/download-example.js'
 import { startRealUploadExample as runRealUploadExample } from './real/upload-example.js'
+import { createIdleWaveAnimator } from './simpler-ui-animate.js'
 
   // -- constants ------------------------------------------------------------
   var TOTAL_SIZE = TRANSFER_UI_DEFAULTS.totalSize
@@ -75,6 +76,9 @@ import { startRealUploadExample as runRealUploadExample } from './real/upload-ex
     maxSpeedHeadroom: 1.06,
   }
 
+  var DEBUG_FIRST_SPEED_FRAME = true
+  var firstSpeedFrameLogged = false
+
   var fakeControlsState = {
     seriesActiveIndex: 1,
     seriesCount: SERIES_COUNT,
@@ -111,6 +115,17 @@ import { startRealUploadExample as runRealUploadExample } from './real/upload-ex
   }
 
   function applyFrameView(frame) {
+    if (DEBUG_FIRST_SPEED_FRAME && !firstSpeedFrameLogged && Number.isFinite(frame.speedBps)) {
+      console.log('FIRST_FRAME_SPEED_BPS', frame.speedBps)
+      console.log('FIRST_FRAME_VIEW', {
+        elapsedMs: frame.elapsedMs,
+        transferredBytes: frame.transferredBytes,
+        totalSize: frame.totalSize,
+        progress: frame.progress,
+      })
+      firstSpeedFrameLogged = true
+    }
+
     var progressText = frame.cancelled ? 'Transfer cancelled' : (frame.progressInt + '% complete')
     var titleValue = frame.cancelled ? 'Cancelled' : progressText
     var statTimeValue = frame.cancelled
@@ -132,11 +147,11 @@ import { startRealUploadExample as runRealUploadExample } from './real/upload-ex
   }
 
   function applyStateView(state) {
-    if (transferHeaderRow) transferHeaderRow.style.display = state.started ? '' : 'none'
-    if (transferCtrlRow) transferCtrlRow.style.display = state.started ? 'flex' : 'none'
-    if (stats) stats.style.display = state.started ? '' : 'none'
-    if (toggleBtn) toggleBtn.style.display = state.started ? 'flex' : 'none'
-    if (!state.started && detailsPanel) {
+    if (transferHeaderRow) transferHeaderRow.style.display = activeMode !== 'idle' && state.started ? '' : 'none'
+    if (transferCtrlRow) transferCtrlRow.style.display = activeMode !== 'idle' && state.started ? 'flex' : 'none'
+    if (stats) stats.style.display = activeMode !== 'idle' && state.started ? '' : 'none'
+    if (toggleBtn) toggleBtn.style.display = activeMode !== 'idle' && state.started ? 'flex' : 'none'
+    if ((activeMode === 'idle' || !state.started) && detailsPanel) {
       detailsPanel.classList.remove('visible')
       detailsPanel.style.display = 'none'
       if (toggleArrow) toggleArrow.classList.remove('open')
@@ -145,25 +160,26 @@ import { startRealUploadExample as runRealUploadExample } from './real/upload-ex
       }
     }
 
-    if (idleIntro) idleIntro.style.display = state.started ? 'none' : ''
-    if (idleDetails) idleDetails.style.display = state.started ? 'none' : ''
+    if (idleIntro) idleIntro.style.display = activeMode !== 'idle' && state.started ? 'none' : ''
+    if (idleDetails) idleDetails.style.display = activeMode !== 'idle' && state.started ? 'none' : ''
 
     btnPause.textContent = state.pauseButtonLabel
     btnPause.style.opacity = state.pauseButtonEnabled ? '1' : '0.4'
     btnPause.style.pointerEvents = state.pauseButtonEnabled ? 'auto' : 'none'
-    btnCancel.disabled = !state.started || state.finished || state.cancelled
+    btnCancel.disabled = activeMode === 'idle' || !state.started || state.finished || state.cancelled
     btnCancel.style.opacity = btnCancel.disabled ? '0.4' : '1'
     btnCancel.style.pointerEvents = btnCancel.disabled ? 'none' : 'auto'
-    startModeControls.style.display = state.started ? 'none' : ''
+    startModeControls.style.display = activeMode !== 'idle' && state.started ? 'none' : ''
     updateToolbarVisibility(state)
     if (btnReset) {
-      btnReset.style.display = state.started ? '' : 'none'
+      btnReset.style.display = activeMode !== 'idle' && state.started ? '' : 'none'
     }
   }
 
   var activeNetworkAbort = null
   var activeMode = 'idle'
   var pendingRealMode = null
+  var idleWaveAnimator = null
 
   function isRealMode() {
     return activeMode === 'download' || activeMode === 'upload'
@@ -171,6 +187,13 @@ import { startRealUploadExample as runRealUploadExample } from './real/upload-ex
 
   function isFakeMode() {
     return activeMode === 'random' || activeMode === 'deterministic'
+  }
+
+  function setActiveMode(mode) {
+    activeMode = typeof mode === 'string' ? mode : 'idle'
+    if (idleWaveAnimator) {
+      idleWaveAnimator.sync()
+    }
   }
 
   function updateToolbarVisibility(state) {
@@ -265,13 +288,35 @@ import { startRealUploadExample as runRealUploadExample } from './real/upload-ex
       activeNetworkAbort.abort()
       activeNetworkAbort = null
     }
+    if (idleWaveAnimator) {
+      idleWaveAnimator.stop()
+    }
   }
 
   var app = new TransferGraph()
 
+  app.setRendererOptions({
+    canvasCtx,
+    canvasWidth: CANVAS_W,
+    canvasHeight: CANVAS_H,
+  })
+
   app.setOnFrame(applyFrameView)
   app.setOnControls(applyControlsView)
   app.setOnStateChange(applyStateView)
+
+  idleWaveAnimator = createIdleWaveAnimator({
+    app: app,
+    totalSize: 102400,
+    waveBarCount: 10,
+    waveCycleMs: 3000,
+    waveOffsetMs: 300,
+    waveMinSegmentMs: 1000,
+    waveMaxSegmentMs: 10000,
+    getActiveMode: function () {
+      return activeMode
+    },
+  })
 
   var fakeSource = new FakeProgressSource({
     controller: app,
@@ -288,10 +333,10 @@ import { startRealUploadExample as runRealUploadExample } from './real/upload-ex
     seriesCount: SERIES_COUNT,
     onControls: applySeriesControlsView,
     onStart: function (ev) {
-      activeMode = ev.mode
+      setActiveMode(ev.mode)
     },
     onCancel: function () {
-      activeMode = 'idle'
+      setActiveMode('')
     },
   })
 
@@ -303,7 +348,7 @@ import { startRealUploadExample as runRealUploadExample } from './real/upload-ex
       canvasWidth: CANVAS_W,
       canvasHeight: CANVAS_H,
     })
-    activeMode = mode
+    setActiveMode(mode)
     fakeSource.start(mode)
   }
 
@@ -316,7 +361,7 @@ import { startRealUploadExample as runRealUploadExample } from './real/upload-ex
       canvasWidth: CANVAS_W,
       canvasHeight: CANVAS_H,
       setActiveMode: function (mode) {
-        activeMode = mode
+        setActiveMode(mode)
       },
       setActiveNetworkAbort: function (nextAbort) {
         activeNetworkAbort = nextAbort
@@ -337,7 +382,7 @@ import { startRealUploadExample as runRealUploadExample } from './real/upload-ex
       canvasWidth: CANVAS_W,
       canvasHeight: CANVAS_H,
       setActiveMode: function (mode) {
-        activeMode = mode
+        setActiveMode(mode)
       },
       setActiveNetworkAbort: function (nextAbort) {
         activeNetworkAbort = nextAbort
@@ -357,6 +402,15 @@ import { startRealUploadExample as runRealUploadExample } from './real/upload-ex
   })
 
   btnPause.addEventListener('click', function () {
+    if (activeMode === 'idle') {
+      if (idleWaveAnimator.isPaused()) {
+        idleWaveAnimator.resume(Date.now())
+      } else {
+        idleWaveAnimator.pause(Date.now())
+      }
+      return
+    }
+
     if (fakeSource.isActive()) {
       fakeSource.togglePause()
       return
@@ -372,7 +426,7 @@ import { startRealUploadExample as runRealUploadExample } from './real/upload-ex
     stopActiveSource()
     app.cancel()
     hideEndpointConfig()
-    activeMode = 'idle'
+    // setActiveMode('idle')
   })
 
   if (btnReset) {
@@ -380,7 +434,7 @@ import { startRealUploadExample as runRealUploadExample } from './real/upload-ex
       stopActiveSource()
       app.reset()
       hideEndpointConfig()
-      activeMode = 'idle'
+      setActiveMode('idle')
     })
   }
 
@@ -450,9 +504,10 @@ import { startRealUploadExample as runRealUploadExample } from './real/upload-ex
     stopActiveSource()
     app.cancel()
     hideEndpointConfig()
-    activeMode = 'idle'
+    setActiveMode('idle')
   })
 
   finishStartupLoading()
 
   app.renderFrame()
+  idleWaveAnimator.sync()
