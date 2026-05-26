@@ -23,6 +23,11 @@ class TransferGraphRenderer {
     colorBackgroundStroke: '#b8b8b8',
     colorOverlay: '#8a8a8a',
   }
+  drawProgressBar = undefined
+  drawGrid = undefined
+  drawSpeedOverlay = undefined
+  drawSpeedLineLabel = undefined
+  drawBorder = undefined
   buildGraphOptions = () => {}
   buildRenderOptions = () => {}
 
@@ -38,6 +43,11 @@ class TransferGraphRenderer {
     this.formatSpeed = opts.formatSpeed instanceof Function ? opts.formatSpeed : this.formatSpeed
     this.pausedRenderOptions = Object.assign({}, this.pausedRenderOptions, opts.pausedRenderOptions || {})
     this.cancelledRenderOptions = Object.assign({}, this.cancelledRenderOptions, opts.cancelledRenderOptions || {})
+    this.drawProgressBar = opts.drawProgressBar instanceof Function ? opts.drawProgressBar : this.drawProgressBar
+    this.drawGrid = opts.drawGrid instanceof Function ? opts.drawGrid : this.drawGrid
+    this.drawSpeedOverlay = opts.drawSpeedOverlay instanceof Function ? opts.drawSpeedOverlay : this.drawSpeedOverlay
+    this.drawSpeedLineLabel = opts.drawSpeedLineLabel instanceof Function ? opts.drawSpeedLineLabel : this.drawSpeedLineLabel
+    this.drawBorder = opts.drawBorder instanceof Function ? opts.drawBorder : this.drawBorder
     this.buildGraphOptions = opts.buildGraphOptions instanceof Function ? opts.buildGraphOptions : this.buildGraphOptions
     this.buildRenderOptions = opts.buildRenderOptions instanceof Function ? opts.buildRenderOptions : this.buildRenderOptions
   }
@@ -59,6 +69,11 @@ class TransferGraphRenderer {
       speedLabelFormatter: (speed) => this.formatSpeed(speed * 1000),
       pixelAverageWindow: model.pixelAverageWindow,
       ignoreTrailingSpeedSample: model.ignoreTrailingSpeedSample,
+      drawProgressBar: this.drawProgressBar,
+      drawGrid: this.drawGrid,
+      drawSpeedOverlay: this.drawSpeedOverlay,
+      drawSpeedLineLabel: this.drawSpeedLineLabel,
+      drawBorder: this.drawBorder,
       // Keep canceled transfers frozen at current progress instead of forcing full completion fill.
       backgroundValue: model.finished && !isCancelled ? model.totalSize : undefined,
     }

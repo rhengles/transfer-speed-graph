@@ -69,6 +69,35 @@ function resolveGraphMaxSpeed(localMaxAvgSpeed, previousMaxSpeed, renderOptions)
 	return Math.max(localMax, decayedMax) * headroom
 }
 
+function defaultDrawProgressBar(args) {
+	args.createDefaultPath()
+	args.canvasCtx.fill()
+	args.canvasCtx.stroke()
+}
+
+function defaultDrawGrid(args) {
+	args.createDefaultPath()
+	args.canvasCtx.stroke()
+}
+
+function defaultDrawSpeedOverlay(args) {
+	args.createDefaultPath()
+	args.canvasCtx.fill()
+}
+
+function defaultDrawSpeedLineLabel(args) {
+	args.createDefaultLinePath()
+	args.canvasCtx.stroke()
+	args.createDefaultLabelBackgroundPath()
+	args.canvasCtx.fill()
+	args.fillDefaultLabelText()
+}
+
+function defaultDrawBorder(args) {
+	args.createDefaultPath()
+	args.canvasCtx.stroke()
+}
+
 function calcAverageSpeedsForResolution(maxValue, stepList, { w: canvasWidth, h: canvasHeight }, renderOptions) {
 	if (!stepList.length) return
 	if (!(Number.isFinite(maxValue) && maxValue > 0)) return
@@ -211,6 +240,11 @@ function renderStepToCanvas(maxValue, stepList, canvasCtx, { w: canvasWidth, h: 
 		speedLabelBackgroundColor = 'rgba(255,255,255,0)',
 		speedGuideColor = 'rgba(0,0,0,0.7)',
 		ignoreTrailingSpeedSample = true,
+		drawProgressBar = defaultDrawProgressBar,
+		drawGrid = defaultDrawGrid,
+		drawSpeedOverlay = defaultDrawSpeedOverlay,
+		drawSpeedLineLabel = defaultDrawSpeedLineLabel,
+		drawBorder = defaultDrawBorder,
 	} = renderOptions || {}
 	if (!stepList.length) return
 	if (!(Number.isFinite(maxValue) && maxValue > 0)) return
@@ -228,29 +262,44 @@ function renderStepToCanvas(maxValue, stepList, canvasCtx, { w: canvasWidth, h: 
 	canvasCtx.fillStyle = colorBackground
 	canvasCtx.strokeStyle = colorBackgroundStroke
 	canvasCtx.lineWidth = 1
-	canvasCtx.beginPath()
-	canvasCtx.rect(0.5, 0.5, lastX, canvasHeight - 1)
-	canvasCtx.fill()
-	canvasCtx.stroke()
+	const renderProgressBar = drawProgressBar instanceof Function ? drawProgressBar : defaultDrawProgressBar
+	renderProgressBar({
+		canvasCtx,
+		canvasWidth,
+		canvasHeight,
+		lastX,
+		backgroundValue,
+		createDefaultPath: () => {
+			canvasCtx.beginPath()
+			canvasCtx.rect(0.5, 0.5, lastX, canvasHeight - 1)
+		},
+	})
 
 	// Grid lines drawn over the full canvas width (including the unfilled area)
 	canvasCtx.save()
 	canvasCtx.strokeStyle = gridColor
 	canvasCtx.lineWidth = 1
-	for (let i = 1; i < gridCols; i++) {
-		const gx = Math.round(canvasWidth * i / gridCols) + 0.5
-		canvasCtx.beginPath()
-		canvasCtx.moveTo(gx, 0.5)
-		canvasCtx.lineTo(gx, canvasHeight - 0.5)
-		canvasCtx.stroke()
-	}
-	for (let i = 1; i < gridRows; i++) {
-		const gy = Math.round(canvasHeight * i / gridRows) + 0.5
-		canvasCtx.beginPath()
-		canvasCtx.moveTo(0.5, gy)
-		canvasCtx.lineTo(canvasWidth - 0.5, gy)
-		canvasCtx.stroke()
-	}
+	const renderGrid = drawGrid instanceof Function ? drawGrid : defaultDrawGrid
+	renderGrid({
+		canvasCtx,
+		canvasWidth,
+		canvasHeight,
+		gridCols,
+		gridRows,
+		createDefaultPath: () => {
+			canvasCtx.beginPath()
+			for (let i = 1; i < gridCols; i++) {
+				const gx = Math.round(canvasWidth * i / gridCols) + 0.5
+				canvasCtx.moveTo(gx, 0.5)
+				canvasCtx.lineTo(gx, canvasHeight - 0.5)
+			}
+			for (let i = 1; i < gridRows; i++) {
+				const gy = Math.round(canvasHeight * i / gridRows) + 0.5
+				canvasCtx.moveTo(0.5, gy)
+				canvasCtx.lineTo(canvasWidth - 0.5, gy)
+			}
+		},
+	})
 	canvasCtx.restore()
 
 	if (lastX) {
@@ -274,31 +323,44 @@ function renderStepToCanvas(maxValue, stepList, canvasCtx, { w: canvasWidth, h: 
 		const maxAvgSpeed = resolvedMaxSpeed
 
 		canvasCtx.save()
-		canvasCtx.beginPath()
-		let x = 0.5
-		let y = canvasHeight - 0.5
 		const endX = Math.min(canvasWidth - 0.5, Math.max(0.5, lastX + 0.5))
-		const height = canvasHeight - 1
-		canvasCtx.moveTo(x, y)
-		for (let i = 0, c = renderPointCount; i < c; i++) {
-			const [time, value, speed] = avgWithSpeeds[i]
-			const valuePx = pixelsPerValue ? value * pixelsPerValue : 0
-			x += valuePx
-			let speedRatio = isZeroLikeTime(time, 1e-6) ? 1
-				: Math.min(1, speed / maxAvgSpeed)
-			y = height - (height * speedRatio) + 0.5
-			canvasCtx.lineTo(x, y)
-		}
-		// Keep the last measured speed until the filled progress width ends.
-		if (x < endX) {
-			canvasCtx.lineTo(endX, y)
-			x = endX
-		}
-		currentSpeedY = y
-		canvasCtx.lineTo(x, canvasHeight - 0.5)
-		canvasCtx.closePath()
 		canvasCtx.fillStyle = colorOverlay
-		canvasCtx.fill()
+		const renderSpeedOverlay = drawSpeedOverlay instanceof Function ? drawSpeedOverlay : defaultDrawSpeedOverlay
+		renderSpeedOverlay({
+			canvasCtx,
+			canvasWidth,
+			canvasHeight,
+			lastX,
+			endX,
+			avgWithSpeeds,
+			renderPointCount,
+			pixelsPerValue,
+			maxAvgSpeed,
+			createDefaultPath: () => {
+				canvasCtx.beginPath()
+				let x = 0.5
+				let y = canvasHeight - 0.5
+				const height = canvasHeight - 1
+				canvasCtx.moveTo(x, y)
+				for (let i = 0, c = renderPointCount; i < c; i++) {
+					const [time, value, speed] = avgWithSpeeds[i]
+					const valuePx = pixelsPerValue ? value * pixelsPerValue : 0
+					x += valuePx
+					let speedRatio = isZeroLikeTime(time, 1e-6) ? 1
+						: Math.min(1, speed / maxAvgSpeed)
+					y = height - (height * speedRatio) + 0.5
+					canvasCtx.lineTo(x, y)
+				}
+				// Keep the last measured speed until the filled progress width ends.
+				if (x < endX) {
+					canvasCtx.lineTo(endX, y)
+					x = endX
+				}
+				currentSpeedY = y
+				canvasCtx.lineTo(x, canvasHeight - 0.5)
+				canvasCtx.closePath()
+			},
+		})
 		// canvasCtx.strokeStyle = '#e00000'
 		// canvasCtx.stroke()
 		canvasCtx.restore()
@@ -318,25 +380,44 @@ function renderStepToCanvas(maxValue, stepList, canvasCtx, { w: canvasWidth, h: 
 		const labelBottomY = Math.max(12.5, Math.min(canvasHeight - 2.5, guideY - 2))
 		const labelTopY = labelBottomY - 11 - labelPaddingY * 2
 		const labelLeftX = textX - labelWidth - labelPaddingX * 2
-
-		canvasCtx.strokeStyle = speedGuideColor
-		canvasCtx.lineWidth = 1
-		canvasCtx.beginPath()
-		canvasCtx.moveTo(0.5, guideY)
-		canvasCtx.lineTo(canvasWidth - 3.5, guideY)
-		canvasCtx.stroke()
-
-		canvasCtx.fillStyle = speedLabelBackgroundColor
-		canvasCtx.fillRect(
-			labelLeftX,
+		const renderSpeedLineLabel = drawSpeedLineLabel instanceof Function ? drawSpeedLineLabel : defaultDrawSpeedLineLabel
+		renderSpeedLineLabel({
+			canvasCtx,
+			canvasWidth,
+			canvasHeight,
+			guideY,
+			textX,
+			labelBottomY,
 			labelTopY,
-			labelWidth + labelPaddingX * 2,
-			11 + labelPaddingY * 2
-		)
-		canvasCtx.fillStyle = speedLabelColor
-		canvasCtx.textAlign = 'right'
-		canvasCtx.textBaseline = 'bottom'
-		canvasCtx.fillText(speedLabel, textX, labelBottomY)
+			labelLeftX,
+			labelWidth,
+			labelPaddingX,
+			labelPaddingY,
+			speedLabel,
+			speedLabelColor,
+			speedLabelBackgroundColor,
+			speedGuideColor,
+			createDefaultLinePath: () => {
+				canvasCtx.beginPath()
+				canvasCtx.moveTo(0.5, guideY)
+				canvasCtx.lineTo(canvasWidth - 3.5, guideY)
+			},
+			createDefaultLabelBackgroundPath: () => {
+				canvasCtx.beginPath()
+				canvasCtx.rect(
+					labelLeftX,
+					labelTopY,
+					labelWidth + labelPaddingX * 2,
+					11 + labelPaddingY * 2,
+				)
+			},
+			fillDefaultLabelText: ({ fillStyle, textAlign, textBaseline } = {}) => {
+				canvasCtx.fillStyle = fillStyle ?? speedLabelColor
+				canvasCtx.textAlign = textAlign ?? 'right'
+				canvasCtx.textBaseline = textBaseline ?? 'bottom'
+				canvasCtx.fillText(speedLabel, textX, labelBottomY)
+			},
+		})
 		canvasCtx.restore()
 	}
 
@@ -344,7 +425,17 @@ function renderStepToCanvas(maxValue, stepList, canvasCtx, { w: canvasWidth, h: 
 	canvasCtx.save()
 	canvasCtx.strokeStyle = borderColor
 	canvasCtx.lineWidth = 1
-	canvasCtx.strokeRect(0.5, 0.5, canvasWidth - 1, canvasHeight - 1)
+	const renderBorder = typeof drawBorder === 'function' ? drawBorder : defaultDrawBorder
+	renderBorder({
+		canvasCtx,
+		canvasWidth,
+		canvasHeight,
+		borderColor,
+		createDefaultPath: () => {
+			canvasCtx.beginPath()
+			canvasCtx.rect(0.5, 0.5, canvasWidth - 1, canvasHeight - 1)
+		},
+	})
 	canvasCtx.restore()
 
 	canvasCtx.restore()
@@ -353,6 +444,6 @@ function renderStepToCanvas(maxValue, stepList, canvasCtx, { w: canvasWidth, h: 
 export {
 	calcAverageSpeedsForResolution,
 	resolveGraphMaxSpeed,
-  renderTransferGraphFrame,
-  renderStepToCanvas,
+	renderTransferGraphFrame,
+	renderStepToCanvas,
 }
