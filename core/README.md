@@ -18,6 +18,26 @@ A lightweight, modular transfer-speed graph inspired by the Windows 8 file trans
 
 ## Quick Usage
 
+### Install
+
+```bash
+npm install @arijs/transfer-speed-graph
+```
+
+### CDN
+
+If you prefer not to use a bundler, you can import the package directly from a CDN in an ES module script:
+
+```js
+import { TransferGraph } from 'https://cdn.jsdelivr.net/npm/@arijs/transfer-speed-graph@latest/+esm'
+```
+
+You can also use unpkg:
+
+```js
+import { TransferGraph } from 'https://unpkg.com/@arijs/transfer-speed-graph@latest?module'
+```
+
 ### Download Example
 
 ```js
