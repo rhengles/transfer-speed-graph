@@ -1,8 +1,9 @@
 {
-  "name": "transfer-speed",
-  "version": "0.0.0",
+  "name": "@arijs/transfer-speed-graph-full",
+  "version": "0.1.0",
   "description": "-",
-  "main": "project-v1/index.js",
+  "private": true,
+  "main": "core/main.js",
   "type": "module",
   "scripts": {
     "test": "node simpler-test.js",
@@ -11,10 +12,9 @@
   },
   "author": "rhengles@gmail.com",
   "license": "MIT",
-  "dependencies": {
-    "@arijs/frontend": "file:../front-end"
-  },
   "devDependencies": {
-    "canvas": "^3.2.0"
+    "canvas": "^3.2.0",
+    "terser": "^5.48.0",
+    "vite": "^8.0.14"
   }
 }

@@ -1,0 +1,25 @@
+{
+  "name": "@arijs/transfer-speed-graph",
+  "version": "0.1.0",
+  "description": "A lightweight, modular transfer speed graph inspired by the Windows 8 file transfer dialog, with support for: Real transfer integration (download/upload), Deterministic and random fake transfer simulation, Pause/cancel/finish states, and Highly configurable graph smoothing and dynamic Y-scale behavior",
+  "type": "module",
+  "author": "rhengles@gmail.com",
+  "license": "MIT",
+  "files": [
+    "dist",
+    "frame.js",
+    "lib.js",
+    "main.js",
+    "model.js",
+    "renderer.js",
+    "speed-series.js"
+  ],
+  "main": "./dist/arijs-transfer-speed-graph.umd.cjs",
+  "module": "./dist/arijs-transfer-speed-graph.js",
+  "exports": {
+    ".": {
+      "import": "./dist/arijs-transfer-speed-graph.js",
+      "require": "./dist/arijs-transfer-speed-graph.umd.cjs"
+    }
+  }
+}
