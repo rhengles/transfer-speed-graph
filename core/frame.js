@@ -397,13 +397,13 @@ function renderStepToCanvas(maxValue, stepList, canvasCtx, { w: canvasWidth, h: 
 			speedLabelColor,
 			speedLabelBackgroundColor,
 			speedGuideColor,
-			createDefaultLinePath: () => {
+			createDefaultLinePath: ({ strokeStyle } = {}) => {
 				canvasCtx.beginPath()
 				canvasCtx.moveTo(0.5, guideY)
 				canvasCtx.lineTo(canvasWidth - 3.5, guideY)
-				canvasCtx.strokeStyle = speedGuideColor
+				canvasCtx.strokeStyle = strokeStyle ?? speedGuideColor
 			},
-			createDefaultLabelBackgroundPath: () => {
+			createDefaultLabelBackgroundPath: ({ fillStyle } = {}) => {
 				canvasCtx.beginPath()
 				canvasCtx.rect(
 					labelLeftX,
@@ -411,7 +411,7 @@ function renderStepToCanvas(maxValue, stepList, canvasCtx, { w: canvasWidth, h: 
 					labelWidth + labelPaddingX * 2,
 					11 + labelPaddingY * 2,
 				)
-				canvasCtx.fillStyle = speedLabelBackgroundColor
+				canvasCtx.fillStyle = fillStyle ?? speedLabelBackgroundColor
 			},
 			fillDefaultLabelText: ({ fillStyle, textAlign, textBaseline } = {}) => {
 				canvasCtx.fillStyle = fillStyle ?? speedLabelColor

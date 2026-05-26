@@ -2,7 +2,7 @@ function startRealDownloadExample(options) {
   const {
     controller,
     endpoint,
-    setActiveMode,
+    // setActiveMode,
     setActiveNetworkAbort,
     onError,
     canvasCtx,
@@ -12,7 +12,7 @@ function startRealDownloadExample(options) {
   if (!controller) throw new Error('startRealDownloadExample requires a controller')
 
   const abortController = new AbortController()
-  setActiveMode('download')
+  // setActiveMode('download')
   setActiveNetworkAbort(abortController)
 
   // To display the transfer speed graph, you create an instance of
@@ -65,7 +65,7 @@ function startRealDownloadExample(options) {
     onError(err)
     controller.cancel()
     setActiveNetworkAbort(null)
-    setActiveMode('idle')
+    // setActiveMode('idle')
   })
 }
 

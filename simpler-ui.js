@@ -76,7 +76,7 @@ import { createIdleWaveAnimator } from './simpler-ui-animate.js'
     maxSpeedHeadroom: 1.06,
   }
 
-  var DEBUG_FIRST_SPEED_FRAME = true
+  var DEBUG_FIRST_SPEED_FRAME = false
   var firstSpeedFrameLogged = false
 
   var fakeControlsState = {
@@ -146,7 +146,24 @@ import { createIdleWaveAnimator } from './simpler-ui-animate.js'
     statTransferred.textContent = bytesLabel(frame.transferredBytes) + ' / ' + bytesLabel(frame.totalSize)
   }
 
+  let lastMode = null
+  let lastViewState = null
   function applyStateView(state) {
+    if (
+      lastViewState &&
+      lastViewState.started === state.started &&
+      lastViewState.paused === state.paused &&
+      lastViewState.cancelled === state.cancelled &&
+      lastViewState.finished === state.finished &&
+      lastMode === activeMode
+    ) {
+      return
+    }
+    lastViewState = state
+    lastMode = activeMode
+
+    // console.log(`applyStateView:`, { activeMode, state})
+
     if (transferHeaderRow) transferHeaderRow.style.display = activeMode !== 'idle' && state.started ? '' : 'none'
     if (transferCtrlRow) transferCtrlRow.style.display = activeMode !== 'idle' && state.started ? 'flex' : 'none'
     if (stats) stats.style.display = activeMode !== 'idle' && state.started ? '' : 'none'
@@ -230,7 +247,7 @@ import { createIdleWaveAnimator } from './simpler-ui-animate.js'
     }
 
     if (rowDownloadUrl) rowDownloadUrl.style.display = isDownloadMode ? '' : 'none'
-    if (rowDownloadSize) rowDownloadSize.style.display = 'none'
+    if (rowDownloadSize) rowDownloadSize.style.display = isDownloadMode ? '' : 'none'
     if (rowUploadUrl) rowUploadUrl.style.display = isDownloadMode ? 'none' : ''
     if (rowUploadSize) rowUploadSize.style.display = isDownloadMode ? 'none' : ''
     if (btnStartEndpoint) {
@@ -288,9 +305,9 @@ import { createIdleWaveAnimator } from './simpler-ui-animate.js'
       activeNetworkAbort.abort()
       activeNetworkAbort = null
     }
-    if (idleWaveAnimator) {
-      idleWaveAnimator.stop()
-    }
+    // if (idleWaveAnimator) {
+    //   idleWaveAnimator.stop()
+    // }
   }
 
   var app = new TransferGraph()
@@ -336,7 +353,7 @@ import { createIdleWaveAnimator } from './simpler-ui-animate.js'
       setActiveMode(ev.mode)
     },
     onCancel: function () {
-      setActiveMode('')
+      // setActiveMode('idle')
     },
   })
 
@@ -354,15 +371,16 @@ import { createIdleWaveAnimator } from './simpler-ui-animate.js'
 
   function startRealDownloadExample() {
     stopActiveSource()
+    setActiveMode('download')
     runRealDownloadExample({
       controller: app,
       endpoint: getEndpointConfig(),
       canvasCtx: canvasCtx,
       canvasWidth: CANVAS_W,
       canvasHeight: CANVAS_H,
-      setActiveMode: function (mode) {
-        setActiveMode(mode)
-      },
+      // setActiveMode: function (mode) {
+      //   setActiveMode(mode)
+      // },
       setActiveNetworkAbort: function (nextAbort) {
         activeNetworkAbort = nextAbort
       },
@@ -375,15 +393,16 @@ import { createIdleWaveAnimator } from './simpler-ui-animate.js'
 
   function startRealUploadExample() {
     stopActiveSource()
+    setActiveMode('upload')
     runRealUploadExample({
       controller: app,
       endpoint: getEndpointConfig(),
       canvasCtx: canvasCtx,
       canvasWidth: CANVAS_W,
       canvasHeight: CANVAS_H,
-      setActiveMode: function (mode) {
-        setActiveMode(mode)
-      },
+      // setActiveMode: function (mode) {
+      //   setActiveMode(mode)
+      // },
       setActiveNetworkAbort: function (nextAbort) {
         activeNetworkAbort = nextAbort
       },

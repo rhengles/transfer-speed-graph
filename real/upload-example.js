@@ -2,7 +2,7 @@ function startRealUploadExample(options) {
   const {
     controller,
     endpoint,
-    setActiveMode,
+    // setActiveMode,
     setActiveNetworkAbort,
     onError,
     canvasCtx,
@@ -11,7 +11,7 @@ function startRealUploadExample(options) {
   } = options
   if (!controller) throw new Error('startRealUploadExample requires a controller')
 
-  setActiveMode('upload')
+  // setActiveMode('upload')
 
   const xhr = new XMLHttpRequest()
   const payloadSize = endpoint.uploadSize
@@ -47,13 +47,13 @@ function startRealUploadExample(options) {
     onError()
     controller.cancel()
     setActiveNetworkAbort(null)
-    setActiveMode('idle')
+    // setActiveMode('idle')
   })
 
   xhr.addEventListener('abort', function () {
     controller.cancel()
     setActiveNetworkAbort(null)
-    setActiveMode('idle')
+    // setActiveMode('idle')
   })
 
   xhr.open('POST', endpoint.uploadUrl)

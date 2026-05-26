@@ -1,3 +1,28 @@
+
+function fnMod (fn, mod) {
+	return function(t) {
+		return mod(t, fn)
+	}
+}
+function quad (x) {
+	return x * x
+}
+function cubic (x) {
+  return x * x * x
+}
+function modOut (t, fn) {
+	return 1 - fn(1 - t)
+}
+function modTwice (t, fn) {
+	return fn(t * 2) * 0.5
+}
+function modInOut (t, fn) {
+	return (t < 0.5 ?
+		modTwice(t, fn) :
+		modOut(t, fnMod(fn, modTwice))
+	)
+}
+
 function clamp01(value) {
   if (!Number.isFinite(value)) return 0
   return Math.min(1, Math.max(0, value))
@@ -5,18 +30,20 @@ function clamp01(value) {
 
 function easeInOutQuadPulse(progress) {
   const t = clamp01(progress)
-  if (t < 0.5) {
-    return 2 * t * t
-  }
-  return 1 - Math.pow(-2 * t + 2, 2) / 2
+  return modInOut(t, cubic)
+  // if (t < 0.5) {
+  //   return 2 * t * t
+  // }
+  // return 1 - Math.pow(-2 * t + 2, 2) / 2
 }
 
 function resolveWaveAmplitude(phaseMs, cycleMs) {
-  const halfCycleMs = cycleMs / 2
-  if (phaseMs < halfCycleMs) {
-    return easeInOutQuadPulse(phaseMs / halfCycleMs)
+  const ascentCycleMs = cycleMs * 0.5
+  const descentCycleMs = cycleMs * 0.5
+  if (phaseMs < ascentCycleMs) {
+    return easeInOutQuadPulse(phaseMs / ascentCycleMs)
   }
-  return 1 - easeInOutQuadPulse((phaseMs - halfCycleMs) / halfCycleMs)
+  return 1 - easeInOutQuadPulse((phaseMs - ascentCycleMs) / descentCycleMs)
 }
 
 function getPositiveNumber(value, fallback) {
