@@ -20,7 +20,7 @@ A lightweight, modular transfer-speed graph inspired by the Windows 8 file trans
 ### Download Example
 
 ```js
-import { TransferGraphController } from './transfer-graph-controller.js'
+import { TransferGraphController } from './core/controller.js'
 
 const controller = new TransferGraphController()
 controller.setOnFrame((view) => {
@@ -68,7 +68,7 @@ Source example: [real/download-example.js](real/download-example.js)
 ### Upload Example
 
 ```js
-import { TransferGraphController } from './transfer-graph-controller.js'
+import { TransferGraphController } from './core/controller.js'
 
 const controller = new TransferGraphController()
 const uploadUrl = 'https://httpbin.org/post'
@@ -131,10 +131,10 @@ Cancelled state:
 The project is split by concern:
 
 - Graph core:
-  - [transfer-graph-controller.js](transfer-graph-controller.js)
-  - [transfer-graph-model.js](transfer-graph-model.js)
-  - [transfer-graph-renderer.js](transfer-graph-renderer.js)
-  - [transfer-graph-frame.js](transfer-graph-frame.js)
+  - [core/controller.js](core/controller.js)
+  - [core/model.js](core/model.js)
+  - [core/renderer.js](core/renderer.js)
+  - [core/frame.js](core/frame.js)
 - Fake transfer subsystem:
   - [fake/progress-source.js](fake/progress-source.js)
   - [fake/simulation.js](fake/simulation.js)

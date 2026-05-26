@@ -1,5 +1,5 @@
 import { bytesSize } from './lib.js'
-import { renderTransferGraphFrame } from './transfer-graph-frame.js'
+import { renderTransferGraphFrame } from './frame.js'
 
 function clampPixelAverageWindow(pixelAverageWindow, canvasWidth) {
   const maxAllowed = Math.max(1, Math.floor(canvasWidth || 1))

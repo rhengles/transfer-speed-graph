@@ -1,7 +1,7 @@
-import { TransferGraphModel } from './transfer-graph-model.js'
-import { TransferGraphRenderer } from './transfer-graph-renderer.js'
+import { TransferGraphModel } from './model.js'
+import { TransferGraphRenderer } from './renderer.js'
 
-class TransferGraphController {
+class TransferGraph {
   constructor(options) {
     this.model = new TransferGraphModel
     this.renderer = new TransferGraphRenderer
@@ -144,11 +144,6 @@ class TransferGraphController {
   }
 }
 
-function createTransferGraphController(options) {
-  return new TransferGraphController(options)
-}
-
 export {
-  TransferGraphController,
-  createTransferGraphController,
+  TransferGraph,
 }

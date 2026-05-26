@@ -8,22 +8,22 @@ import {
 	getTimeOfSeriesItem,
 	createSeriesItemInverted,
 	calcSeriesAverage,
-	printSegment,
-	printSeries,
-	printAverage,
-	// calcSeriesSpeedsAverageAccumulated,
 	calcSeriesSpeedsAtEachInterval,
 	SERIES_TIME_UNIT,
 	convertSeriesAccumulatedToDeltas,
-	calcAverageSpeedsForResolution,
-} from './simpler.js'
+} from './core/speed-series.js'
+import {
+	printSegment,
+	printSeries,
+	printAverage,
+} from './test-utils/print-series.js'
 import {
 	buildDeterministicTransferSeries,
 	clampSeriesIndex,
 	createSeededRandom,
 } from './fake/series.js'
 import { TRANSFER_UI_DEFAULTS } from './fake/progress-source.js'
-import { renderTransferGraphFrame } from './transfer-graph-frame.js'
+import { calcAverageSpeedsForResolution, renderTransferGraphFrame } from './core/frame.js'
 import { createCanvas } from 'canvas'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -34,12 +34,29 @@ const CANVAS_HEIGHT = 120
 const SNAPSHOT_DIR = path.join(__dirname, 'snapshots')
 const SNAPSHOT_FILE = path.join(SNAPSHOT_DIR, 'simpler.json')
 const SNAPSHOT_IMAGE = path.join(SNAPSHOT_DIR, 'simpler.png')
-const SNAPSHOT_PROGRESS_IMAGE = path.join(SNAPSHOT_DIR, 'simpler-progress-5pct.png')
-const SNAPSHOT_PROGRESS_IMAGE_SERIES_16 = path.join(SNAPSHOT_DIR, 'simpler-progress-5pct-series16.png')
+const SNAPSHOT_PROGRESS_TR_HIGH_IMAGE = path.join(SNAPSHOT_DIR, 'simpler-progress-5pct-time-random-high.png')
+const SNAPSHOT_PROGRESS_TR_HIGH_IMAGE_PAW4 = path.join(SNAPSHOT_DIR, 'simpler-progress-5pct-time-random-high-paw4.png')
+const SNAPSHOT_PROGRESS_TR_HIGH_IMAGE_SERIES_16 = path.join(SNAPSHOT_DIR, 'simpler-progress-5pct-time-random-high-series16.png')
+const SNAPSHOT_PROGRESS_TR_LOW_IMAGE = path.join(SNAPSHOT_DIR, 'simpler-progress-5pct-time-random-low.png')
+const SNAPSHOT_PROGRESS_TR_LOW_IMAGE_PAW4 = path.join(SNAPSHOT_DIR, 'simpler-progress-5pct-time-random-low-paw4.png')
+const SNAPSHOT_PROGRESS_TR_LOW_IMAGE_SERIES_16 = path.join(SNAPSHOT_DIR, 'simpler-progress-5pct-time-random-low-series16.png')
+const SNAPSHOT_PROGRESS_TR_NONE_IMAGE = path.join(SNAPSHOT_DIR, 'simpler-progress-5pct-time-random-none.png')
+const SNAPSHOT_PROGRESS_TR_NONE_IMAGE_PAW4 = path.join(SNAPSHOT_DIR, 'simpler-progress-5pct-time-random-none-paw4.png')
+const SNAPSHOT_PROGRESS_TR_NONE_IMAGE_SERIES_16 = path.join(SNAPSHOT_DIR, 'simpler-progress-5pct-time-random-none-series16.png')
 const RNG_SEED = 0xC0FFEE
 
 const UI_TOTAL_SIZE = TRANSFER_UI_DEFAULTS.totalSize
 const UI_SERIES_COUNT = TRANSFER_UI_DEFAULTS.seriesCount
+
+const transferSimulationTimeRandomLow = {
+  minFrame: 520,
+  maxFrame: 1020,
+}
+
+const transferSimulationTimeRandomNone = {
+  minFrame: 1020,
+  maxFrame: 1020,
+}
 
 function parseSeriesIndex(value) {
 	if (value === undefined || value === null || value === '') return undefined
@@ -153,7 +170,7 @@ function renderSnapshotToCanvas(snapshot) {
 	return canvas
 }
 
-function renderProgressMilestoneSnapshotToCanvas(seriesConfig, series, progressList) {
+function renderProgressMilestoneSnapshotToCanvas(seriesConfig, series, progressList, renderOptions) {
 	const canvas = createCanvas(CANVAS_WIDTH, CANVAS_HEIGHT * progressList.length)
 	const canvasCtx = canvas.getContext('2d')
 	const milestoneIndexes = pickSeriesIndexesByProgress(series, seriesConfig.maxValue, progressList)
@@ -173,8 +190,9 @@ function renderProgressMilestoneSnapshotToCanvas(seriesConfig, series, progressL
 			runningMaxSpeed: 0,
 			manageMaxSpeed: false,
 			renderOptions: {
-				speedLabel: `${progressPct}%`,
 				pixelAverageWindow: 1,
+				...renderOptions,
+				speedLabel: `${progressPct}%`,
 				backgroundValue: progressPct >= 100 ? seriesConfig.maxValue : undefined,
 			},
 		})
@@ -184,8 +202,32 @@ function renderProgressMilestoneSnapshotToCanvas(seriesConfig, series, progressL
 	return { canvas, milestoneIndexes }
 }
 
-let progressMilestoneCanvas = null
-let progressMilestoneCanvasSeries16 = null
+function createDeterministicUiProgressSnapshot(seriesOptions, progressMilestones, {label, renderOptions}) {
+	const deterministicUi = buildDeterministicTransferSeries({
+		...seriesOptions,
+		totalSize: UI_TOTAL_SIZE,
+		deterministicSeed: RNG_SEED,
+		seriesCount: UI_SERIES_COUNT,
+	})
+	console.log(`Using UI ${label} index ${deterministicUi.selectedSeriesIndex + 1}/${UI_SERIES_COUNT}`)
+	const progressSnapshot = renderProgressMilestoneSnapshotToCanvas(
+		deterministicUi.config,
+		deterministicUi.series,
+		progressMilestones,
+		renderOptions,
+	)
+	return { deterministicUi, progressSnapshot }
+}
+
+let progressMilestoneCanvasTrHigh = null
+let progressMilestoneCanvasTrHighPaw4 = null
+let progressMilestoneCanvasTrHighSeries16 = null
+let progressMilestoneCanvasTrLow = null
+let progressMilestoneCanvasTrLowPaw4 = null
+let progressMilestoneCanvasTrLowSeries16 = null
+let progressMilestoneCanvasTrNone = null
+let progressMilestoneCanvasTrNonePaw4 = null
+let progressMilestoneCanvasTrNoneSeries16 = null
 
 const snapshot = withSeededRandom(RNG_SEED, () => {
 	const seedHex = `0x${RNG_SEED.toString(16).toUpperCase()}`
@@ -365,42 +407,179 @@ const snapshot = withSeededRandom(RNG_SEED, () => {
 		{ w: CANVAS_WIDTH, h: CANVAS_HEIGHT },
 	)
 
-	const deterministicUi = buildDeterministicTransferSeries({
-		totalSize: UI_TOTAL_SIZE,
-		deterministicSeed: RNG_SEED,
-		seriesCount: UI_SERIES_COUNT,
-		seriesIndex: resolveUiSeriesIndex(UI_SERIES_COUNT),
-	})
-	console.log(`Using UI deterministic series index ${deterministicUi.selectedSeriesIndex + 1}/${UI_SERIES_COUNT}`)
 	const progressMilestones = Array.from({ length: 20 }, (_, index) => (index + 1) * 0.05)
-	const progressSnapshot = renderProgressMilestoneSnapshotToCanvas(
-		deterministicUi.config,
-		deterministicUi.series,
-		progressMilestones,
-	)
-	const deterministicUiSeries16 = buildDeterministicTransferSeries({
-		totalSize: UI_TOTAL_SIZE,
-		deterministicSeed: RNG_SEED,
-		seriesCount: UI_SERIES_COUNT,
-		seriesIndex: UI_SERIES_COUNT - 1,
-	})
-	const progressSnapshotSeries16 = renderProgressMilestoneSnapshotToCanvas(
-		deterministicUiSeries16.config,
-		deterministicUiSeries16.series,
-		progressMilestones,
-	)
 
-	data.deterministicUiSeries = deterministicUi.series
-	data.deterministicUiSeriesIndex = deterministicUi.selectedSeriesIndex
-	data.deterministicUiSeriesCount = UI_SERIES_COUNT
-	data.deterministicUiSeries16Index = deterministicUiSeries16.selectedSeriesIndex
 	data.progressMilestones = progressMilestones
-	data.progressMilestoneIndexes = progressSnapshot.milestoneIndexes
-	data.progressMilestoneImage = path.basename(SNAPSHOT_PROGRESS_IMAGE)
-	data.progressMilestoneSeries16Indexes = progressSnapshotSeries16.milestoneIndexes
-	data.progressMilestoneSeries16Image = path.basename(SNAPSHOT_PROGRESS_IMAGE_SERIES_16)
-	progressMilestoneCanvas = progressSnapshot.canvas
-	progressMilestoneCanvasSeries16 = progressSnapshotSeries16.canvas
+	data.deterministicUiSeriesCount = UI_SERIES_COUNT
+	// data.deterministicUiSeries = deterministicUi.series
+
+	const {
+		deterministicUi,
+		progressSnapshot,
+	} = createDeterministicUiProgressSnapshot({
+		seriesIndex: resolveUiSeriesIndex(UI_SERIES_COUNT),
+	}, progressMilestones, {
+		label: 'time random high',
+	})
+
+	data.trHighSeries1 = {
+		series: deterministicUi.series,
+		seriesIndex: deterministicUi.selectedSeriesIndex,
+		milestoneIndexes: progressSnapshot.milestoneIndexes,
+		milestoneImage: path.basename(SNAPSHOT_PROGRESS_TR_HIGH_IMAGE),
+	}
+	// data.deterministicUiSeriesIndex = deterministicUi.selectedSeriesIndex
+	// data.progressMilestoneIndexes = progressSnapshot.milestoneIndexes
+	// data.progressMilestoneImage = path.basename(SNAPSHOT_PROGRESS_IMAGE)
+
+	const {
+		deterministicUi: deterministicUiPaw4,
+		progressSnapshot: progressSnapshotPaw4,
+	} = createDeterministicUiProgressSnapshot({
+		seriesIndex: resolveUiSeriesIndex(UI_SERIES_COUNT),
+	}, progressMilestones, {
+		label: 'time random high',
+		renderOptions: {
+			pixelAverageWindow: 4,
+		},
+	})
+
+	data.trHighSeries1Paw4 = {
+		series: deterministicUiPaw4.series,
+		seriesIndex: deterministicUiPaw4.selectedSeriesIndex,
+		milestoneIndexes: progressSnapshotPaw4.milestoneIndexes,
+		milestoneImage: path.basename(SNAPSHOT_PROGRESS_TR_HIGH_IMAGE_PAW4),
+	}
+
+	const {
+		deterministicUi: deterministicUiSeries16,
+		progressSnapshot: progressSnapshotSeries16,
+	} = createDeterministicUiProgressSnapshot({
+		seriesIndex: UI_SERIES_COUNT - 1,
+	}, progressMilestones, {
+		label: 'time random high',
+	})
+
+	data.trHighSeries16 = {
+		seriesIndex: deterministicUiSeries16.selectedSeriesIndex,
+		milestoneIndexes: progressSnapshotSeries16.milestoneIndexes,
+		milestoneImage: path.basename(SNAPSHOT_PROGRESS_TR_HIGH_IMAGE_SERIES_16),
+	}
+	// data.deterministicUiSeries16Index = deterministicUiSeries16.selectedSeriesIndex
+	// data.progressMilestoneSeries16Indexes = progressSnapshotSeries16.milestoneIndexes
+	// data.progressMilestoneSeries16Image = path.basename(SNAPSHOT_PROGRESS_IMAGE_SERIES_16)
+
+	const {
+		deterministicUi: deterministicUiTrLow,
+		progressSnapshot: progressSnapshotTrLow,
+	} = createDeterministicUiProgressSnapshot({
+		seriesIndex: resolveUiSeriesIndex(UI_SERIES_COUNT),
+		...transferSimulationTimeRandomLow,
+	}, progressMilestones, {
+		label: 'time random low',
+	})
+
+	data.trLowSeries1Paw4 = {
+		seriesIndex: deterministicUiTrLow.selectedSeriesIndex,
+		milestoneIndexes: progressSnapshotTrLow.milestoneIndexes,
+		milestoneImage: path.basename(SNAPSHOT_PROGRESS_TR_LOW_IMAGE),
+	}
+
+	const {
+		deterministicUi: deterministicUiTrLowPaw4,
+		progressSnapshot: progressSnapshotTrLowPaw4,
+	} = createDeterministicUiProgressSnapshot({
+		seriesIndex: resolveUiSeriesIndex(UI_SERIES_COUNT),
+		...transferSimulationTimeRandomLow,
+	}, progressMilestones, {
+		label: 'time random low',
+		renderOptions: {
+			pixelAverageWindow: 4,
+		},
+	})
+
+	data.trLowSeries1Paw4 = {
+		seriesIndex: deterministicUiTrLowPaw4.selectedSeriesIndex,
+		milestoneIndexes: progressSnapshotTrLowPaw4.milestoneIndexes,
+		milestoneImage: path.basename(SNAPSHOT_PROGRESS_TR_LOW_IMAGE_PAW4),
+	}
+
+	const {
+		deterministicUi: deterministicUiTrLowSeries16,
+		progressSnapshot: progressSnapshotTrLowSeries16,
+	} = createDeterministicUiProgressSnapshot({
+		seriesIndex: UI_SERIES_COUNT - 1,
+		...transferSimulationTimeRandomLow,
+	}, progressMilestones, {
+		label: 'time random low',
+	})
+
+	data.trLowSeries16 = {
+		seriesIndex: deterministicUiTrLowSeries16.selectedSeriesIndex,
+		milestoneIndexes: progressSnapshotTrLowSeries16.milestoneIndexes,
+		milestoneImage: path.basename(SNAPSHOT_PROGRESS_TR_LOW_IMAGE_SERIES_16),
+	}
+
+	const {
+		deterministicUi: deterministicUiTrNone,
+		progressSnapshot: progressSnapshotTrNone,
+	} = createDeterministicUiProgressSnapshot({
+		seriesIndex: resolveUiSeriesIndex(UI_SERIES_COUNT),
+		...transferSimulationTimeRandomNone,
+	}, progressMilestones, {
+		label: 'time random none',
+	})
+
+	data.trNoneSeries1 = {
+		seriesIndex: deterministicUiTrNone.selectedSeriesIndex,
+		milestoneIndexes: progressSnapshotTrNone.milestoneIndexes,
+		milestoneImage: path.basename(SNAPSHOT_PROGRESS_TR_NONE_IMAGE),
+	}
+
+	const {
+		deterministicUi: deterministicUiTrNonePaw4,
+		progressSnapshot: progressSnapshotTrNonePaw4,
+	} = createDeterministicUiProgressSnapshot({
+		seriesIndex: resolveUiSeriesIndex(UI_SERIES_COUNT),
+		...transferSimulationTimeRandomNone,
+	}, progressMilestones, {
+		label: 'time random none',
+		renderOptions: {
+			pixelAverageWindow: 4,
+		},
+	})
+
+	data.trNoneSeries1Paw4 = {
+		seriesIndex: deterministicUiTrNonePaw4.selectedSeriesIndex,
+		milestoneIndexes: progressSnapshotTrNonePaw4.milestoneIndexes,
+		milestoneImage: path.basename(SNAPSHOT_PROGRESS_TR_NONE_IMAGE_PAW4),
+	}
+
+	const {
+		deterministicUi: deterministicUiTrNoneSeries16,
+		progressSnapshot: progressSnapshotTrNoneSeries16,
+	} = createDeterministicUiProgressSnapshot({
+		seriesIndex: UI_SERIES_COUNT - 1,
+		...transferSimulationTimeRandomNone,
+	}, progressMilestones, {
+		label: 'time random none',
+	})
+
+	data.trNoneSeries16 = {
+		seriesIndex: deterministicUiTrNoneSeries16.selectedSeriesIndex,
+		milestoneIndexes: progressSnapshotTrNoneSeries16.milestoneIndexes,
+		milestoneImage: path.basename(SNAPSHOT_PROGRESS_TR_NONE_IMAGE_SERIES_16),
+	}
+
+	progressMilestoneCanvasTrHigh = progressSnapshot.canvas
+	progressMilestoneCanvasTrHighPaw4 = progressSnapshotPaw4.canvas
+	progressMilestoneCanvasTrHighSeries16 = progressSnapshotSeries16.canvas
+	progressMilestoneCanvasTrLow = progressSnapshotTrLow.canvas
+	progressMilestoneCanvasTrLowPaw4 = progressSnapshotTrLowPaw4.canvas
+	progressMilestoneCanvasTrLowSeries16 = progressSnapshotTrLowSeries16.canvas
+	progressMilestoneCanvasTrNone = progressSnapshotTrNone.canvas
+	progressMilestoneCanvasTrNonePaw4 = progressSnapshotTrNonePaw4.canvas
+	progressMilestoneCanvasTrNoneSeries16 = progressSnapshotTrNoneSeries16.canvas
 
 	return data
 })
@@ -413,12 +592,47 @@ const snapshotCanvas = renderSnapshotToCanvas(snapshot)
 fs.writeFileSync(SNAPSHOT_IMAGE, snapshotCanvas.toBuffer('image/png'))
 console.log(`Saved simpler graph snapshot to ${SNAPSHOT_IMAGE}`)
 
-if (progressMilestoneCanvas) {
-	fs.writeFileSync(SNAPSHOT_PROGRESS_IMAGE, progressMilestoneCanvas.toBuffer('image/png'))
-	console.log(`Saved milestone progress snapshot to ${SNAPSHOT_PROGRESS_IMAGE}`)
+if (progressMilestoneCanvasTrHigh) {
+	fs.writeFileSync(SNAPSHOT_PROGRESS_TR_HIGH_IMAGE, progressMilestoneCanvasTrHigh.toBuffer('image/png'))
+	console.log(`Saved time random high snapshot to ${SNAPSHOT_PROGRESS_TR_HIGH_IMAGE}`)
 }
 
-if (progressMilestoneCanvasSeries16) {
-	fs.writeFileSync(SNAPSHOT_PROGRESS_IMAGE_SERIES_16, progressMilestoneCanvasSeries16.toBuffer('image/png'))
-	console.log(`Saved milestone progress snapshot (series 16/16) to ${SNAPSHOT_PROGRESS_IMAGE_SERIES_16}`)
+if (progressMilestoneCanvasTrHighPaw4) {
+	fs.writeFileSync(SNAPSHOT_PROGRESS_TR_HIGH_IMAGE_PAW4, progressMilestoneCanvasTrHighPaw4.toBuffer('image/png'))
+	console.log(`Saved time random high snapshot (PAW4) to ${SNAPSHOT_PROGRESS_TR_HIGH_IMAGE_PAW4}`)
+}
+
+if (progressMilestoneCanvasTrHighSeries16) {
+	fs.writeFileSync(SNAPSHOT_PROGRESS_TR_HIGH_IMAGE_SERIES_16, progressMilestoneCanvasTrHighSeries16.toBuffer('image/png'))
+	console.log(`Saved time random high snapshot (series 16/16) to ${SNAPSHOT_PROGRESS_TR_HIGH_IMAGE_SERIES_16}`)
+}
+
+if (progressMilestoneCanvasTrLow) {
+	fs.writeFileSync(SNAPSHOT_PROGRESS_TR_LOW_IMAGE, progressMilestoneCanvasTrLow.toBuffer('image/png'))
+	console.log(`Saved time random low snapshot to ${SNAPSHOT_PROGRESS_TR_LOW_IMAGE}`)
+}
+
+if (progressMilestoneCanvasTrLowPaw4) {
+	fs.writeFileSync(SNAPSHOT_PROGRESS_TR_LOW_IMAGE_PAW4, progressMilestoneCanvasTrLowPaw4.toBuffer('image/png'))
+	console.log(`Saved time random low snapshot (PAW4) to ${SNAPSHOT_PROGRESS_TR_LOW_IMAGE_PAW4}`)
+}
+
+if (progressMilestoneCanvasTrLowSeries16) {
+	fs.writeFileSync(SNAPSHOT_PROGRESS_TR_LOW_IMAGE_SERIES_16, progressMilestoneCanvasTrLowSeries16.toBuffer('image/png'))
+	console.log(`Saved time random low snapshot (series 16/16) to ${SNAPSHOT_PROGRESS_TR_LOW_IMAGE_SERIES_16}`)
+}
+
+if (progressMilestoneCanvasTrNone) {
+	fs.writeFileSync(SNAPSHOT_PROGRESS_TR_NONE_IMAGE, progressMilestoneCanvasTrNone.toBuffer('image/png'))
+	console.log(`Saved time random none snapshot to ${SNAPSHOT_PROGRESS_TR_NONE_IMAGE}`)
+}
+
+if (progressMilestoneCanvasTrNonePaw4) {
+	fs.writeFileSync(SNAPSHOT_PROGRESS_TR_NONE_IMAGE_PAW4, progressMilestoneCanvasTrNonePaw4.toBuffer('image/png'))
+	console.log(`Saved time random none snapshot (PAW4) to ${SNAPSHOT_PROGRESS_TR_NONE_IMAGE_PAW4}`)
+}
+
+if (progressMilestoneCanvasTrNoneSeries16) {
+	fs.writeFileSync(SNAPSHOT_PROGRESS_TR_NONE_IMAGE_SERIES_16, progressMilestoneCanvasTrNoneSeries16.toBuffer('image/png'))
+	console.log(`Saved time random none snapshot (series 16/16) to ${SNAPSHOT_PROGRESS_TR_NONE_IMAGE_SERIES_16}`)
 }

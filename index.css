@@ -1,7 +1,8 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  background: #6b8099;
+  background: #6b8099 url('artwork/github-preview-bg.png') repeat center center fixed;
+  background-size: cover;
   display: flex;
   align-items: center;
   justify-content: center;

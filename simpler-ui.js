@@ -1,5 +1,5 @@
-import { printTime, bytesSize } from './lib.js'
-import { TransferGraphController } from './transfer-graph-controller.js'
+import { printTime, bytesSize } from './core/lib.js'
+import { TransferGraph } from './core/main.js'
 import { FakeProgressSource, TRANSFER_UI_DEFAULTS } from './fake/progress-source.js'
 import { startRealDownloadExample as runRealDownloadExample } from './real/download-example.js'
 import { startRealUploadExample as runRealUploadExample } from './real/upload-example.js'
@@ -267,7 +267,7 @@ import { startRealUploadExample as runRealUploadExample } from './real/upload-ex
     }
   }
 
-  var app = new TransferGraphController()
+  var app = new TransferGraph()
 
   app.setOnFrame(applyFrameView)
   app.setOnControls(applyControlsView)
