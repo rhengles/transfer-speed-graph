@@ -12,6 +12,12 @@
   },
   "author": "rhengles@gmail.com",
   "license": "MIT",
+  "homepage": "https://speed-transfer.arijs.org/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rhengles/transfer-speed-graph",
+    "directory": "core"
+  },
   "devDependencies": {
     "canvas": "^3.2.0",
     "terser": "^5.48.0",

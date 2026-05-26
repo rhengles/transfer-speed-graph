@@ -2,6 +2,8 @@
 
 ![Transfer Speed Graph](img/artwork/github-preview-720.png)
 
+[NPM Package](npmjs.com/package/@arijs/transfer-speed-graph) ![NPM Version](https://img.shields.io/npm/v/%40arijs%2Ftransfer-speed-graph)
+
 A lightweight, modular transfer-speed graph inspired by the Windows 8 file transfer dialog, with support for:
 
 - Real transfer integration (download/upload)
