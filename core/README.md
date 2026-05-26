@@ -2,7 +2,8 @@
 
 ![Transfer Speed Graph](img/artwork/github-preview-720.png)
 
-[NPM Package](npmjs.com/package/@arijs/transfer-speed-graph) ![NPM Version](https://img.shields.io/npm/v/%40arijs%2Ftransfer-speed-graph)
+
+[Transfer Speed Graph homepage](https://speed-transfer.arijs.org/) / [NPM Package](https://npmjs.com/package/@arijs/transfer-speed-graph) ![NPM Version](https://img.shields.io/npm/v/%40arijs%2Ftransfer-speed-graph)
 
 A lightweight, modular transfer-speed graph inspired by the Windows 8 file transfer dialog, with support for:
 
@@ -12,8 +13,6 @@ A lightweight, modular transfer-speed graph inspired by the Windows 8 file trans
 - Highly configurable graph smoothing and dynamic Y-scale behavior
 
 ### Real Example
-
-[Live homepage](https://speed-transfer.arijs.org/)
 
 ![Deterministic transfer at 50%](img/screenshots/deterministic-50perc.png)
 
