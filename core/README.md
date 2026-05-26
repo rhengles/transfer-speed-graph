@@ -63,7 +63,7 @@ fetch(downloadUrl).then(async (res) => {
 })
 ```
 
-Source example: [real/download-example.js](real/download-example.js)
+Source example: [real/download-example.js](https://github.com/rhengles/transfer-speed-graph/blob/master/real/download-example.js)
 
 ### Upload Example
 
@@ -112,7 +112,7 @@ xhr.open('POST', uploadUrl)
 xhr.send(payload)
 ```
 
-Source example: [real/upload-example.js](real/upload-example.js)
+Source example: [real/upload-example.js](https://github.com/rhengles/transfer-speed-graph/blob/master/real/upload-example.js)
 
 ## State Showcase
 
