@@ -6,6 +6,7 @@
   "main": "core/main.js",
   "type": "module",
   "scripts": {
+    "build": "vite build",
     "test": "node simpler-test.js",
     "v1-snapshot": "node project-v1/snapshot.js",
     "simpler": "node simpler-test.js"
