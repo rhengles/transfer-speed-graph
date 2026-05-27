@@ -38,6 +38,37 @@ You can also use unpkg:
 import { TransferGraph } from 'https://unpkg.com/@arijs/transfer-speed-graph@latest?module'
 ```
 
+### HTML Script Tag
+
+If you want to use the UMD bundle in a plain HTML page, load it with a normal script tag and read `TransferGraph` from `window`:
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Transfer Graph</title>
+    <script src="https://cdn.jsdelivr.net/npm/@arijs/transfer-speed-graph@latest/dist/arijs-transfer-speed-graph.umd.js"></script>
+  </head>
+  <body>
+    <canvas id="graph" width="416" height="72"></canvas>
+    <script>
+      const graph = new TransferSpeedGraph.TransferGraph()
+      const canvasCtx = document.getElementById('graph').getContext('2d')
+
+      graph.setRendererOptions({
+        canvasCtx,
+        canvasWidth: 416,
+        canvasHeight: 72,
+      })
+
+      graph.startTransfer({ totalSize: 12 * 1024 * 1024 })
+    </script>
+  </body>
+</html>
+```
+
 ### Download Example
 
 ```js

@@ -7,7 +7,11 @@ export default defineConfig({
       entry: resolve(import.meta.dirname, 'core/main.js'),
       name: 'TransferSpeedGraph',
       // the proper extensions will be added
-      fileName: 'arijs-transfer-speed-graph',
+      // fileName: 'arijs-transfer-speed-graph',
+      fileName: (format) => {
+        if (format === 'es') return `arijs-transfer-speed-graph.js`;
+        return `arijs-transfer-speed-graph.${format}.js`;
+      }
     },
     minify: 'terser',
     outDir: 'core/dist',
