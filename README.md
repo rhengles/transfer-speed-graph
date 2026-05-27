@@ -242,159 +242,6 @@ Fake simulation is configurable through `simulationOptions`, including:
 
 This allows both realistic noisy profiles and stable deterministic test profiles.
 
-### Canvas Drawing Hooks
-
-The renderer also exposes optional hooks for custom canvas drawing. If you do not provide any of them, the default implementation keeps the current visual behavior.
-
-Pass these through `new TransferGraph({ ... })` or `controller.setRendererOptions({ ... })`:
-
-#### Common argument properties
-
-Every draw hook receives these shared properties:
-
-- `canvasCtx`: the active 2D canvas context for the current frame.
-- `canvasWidth`: the canvas width in pixels.
-- `canvasHeight`: the canvas height in pixels.
-
-#### `drawProgressBar`
-
-Signature:
-
-```js
-drawProgressBar({ canvasCtx, canvasWidth, canvasHeight, lastX, backgroundValue, createDefaultPath })
-```
-
-- `lastX`: the resolved filled width of the progress bar in canvas coordinates.
-- `backgroundValue`: the value used to compute the background fill width.
-- `createDefaultPath()`: builds the current progress-bar path with `beginPath()` + `rect()`.
-
-Default behavior: the renderer calls `createDefaultPath()`, then `fill()` and `stroke()`.
-
-```js
-const graph = new TransferGraph({
-  drawProgressBar({ canvasCtx, createDefaultPath }) {
-    createDefaultPath()
-    canvasCtx.fill()
-    canvasCtx.stroke()
-  },
-})
-```
-
-#### `drawGrid`
-
-Signature:
-
-```js
-drawGrid({ canvasCtx, canvasWidth, canvasHeight, gridCols, gridRows, createDefaultPath })
-```
-
-- `gridCols`: number of vertical grid divisions.
-- `gridRows`: number of horizontal grid divisions.
-- `createDefaultPath()`: builds the current grid paths for both directions.
-
-Default behavior: the renderer calls `createDefaultPath()`, then `stroke()`.
-
-```js
-const graph = new TransferGraph({
-  drawGrid({ canvasCtx, createDefaultPath }) {
-    createDefaultPath()
-    canvasCtx.stroke()
-  },
-})
-```
-
-#### `drawSpeedOverlay`
-
-Signature:
-
-```js
-drawSpeedOverlay({ canvasCtx, canvasWidth, canvasHeight, lastX, endX, avgWithSpeeds, renderPointCount, pixelsPerValue, maxAvgSpeed, createDefaultPath })
-```
-
-- `lastX`: the resolved filled width of the progress area.
-- `endX`: the right edge where the overlay path should continue until the filled progress ends.
-- `avgWithSpeeds`: the calculated speed points used to draw the overlay.
-- `renderPointCount`: number of points used when rendering the visible speed curve.
-- `pixelsPerValue`: the conversion factor from value units to canvas X pixels.
-- `maxAvgSpeed`: the resolved speed scale used to normalize the overlay height.
-- `createDefaultPath()`: builds the current speed-area path and returns the resolved point position via the internal path logic.
-
-Default behavior: the renderer calls `createDefaultPath()`, then `fill()`.
-
-```js
-const graph = new TransferGraph({
-  drawSpeedOverlay({ canvasCtx, createDefaultPath }) {
-    createDefaultPath()
-    canvasCtx.fill()
-  },
-})
-```
-
-#### `drawSpeedLineLabel`
-
-Signature:
-
-```js
-drawSpeedLineLabel({ canvasCtx, canvasWidth, canvasHeight, guideY, textX, labelBottomY, labelTopY, labelLeftX, labelWidth, labelPaddingX, labelPaddingY, speedLabel, speedLabelColor, speedLabelBackgroundColor, speedGuideColor, createDefaultLinePath, createDefaultLabelBackgroundPath, fillDefaultLabelText })
-```
-
-- `guideY`: the Y position of the horizontal guide line.
-- `textX`: the right-aligned X position used for the label text.
-- `labelBottomY`: the baseline Y position for the label text.
-- `labelTopY`: the top Y position of the background box.
-- `labelLeftX`: the left X position of the background box.
-- `labelWidth`: measured width of the label text.
-- `labelPaddingX`: horizontal padding used by the default label box.
-- `labelPaddingY`: vertical padding used by the default label box.
-- `speedLabel`: the formatted label string.
-- `speedLabelColor`: the current text color.
-- `speedLabelBackgroundColor`: the current background fill color.
-- `speedGuideColor`: the current guide-line stroke color.
-- `createDefaultLinePath()`: builds the current guide-line path.
-- `createDefaultLabelBackgroundPath()`: builds the current label background path with `beginPath()` + `rect()`.
-- `fillDefaultLabelText(options)`: draws the current text using `fillText()`. You can override the fill style or text alignment through `options`.
-
-Default behavior: the renderer calls the default line path, strokes it, calls the default background path, fills it, and then calls `fillDefaultLabelText()`.
-
-```js
-const graph = new TransferGraph({
-  drawSpeedLineLabel({
-    canvasCtx,
-    createDefaultLinePath,
-    createDefaultLabelBackgroundPath,
-    fillDefaultLabelText,
-  }) {
-    createDefaultLinePath()
-    canvasCtx.stroke()
-    createDefaultLabelBackgroundPath()
-    canvasCtx.fill()
-    fillDefaultLabelText()
-  },
-})
-```
-
-#### `drawBorder`
-
-Signature:
-
-```js
-drawBorder({ canvasCtx, canvasWidth, canvasHeight, borderColor, createDefaultPath })
-```
-
-- `borderColor`: the current border stroke color.
-- `createDefaultPath()`: builds the current canvas border path with `beginPath()` + `rect()`.
-
-Default behavior: the renderer calls `createDefaultPath()`, then `stroke()`.
-
-```js
-const graph = new TransferGraph({
-  drawBorder({ canvasCtx, createDefaultPath }) {
-    createDefaultPath()
-    canvasCtx.stroke()
-  },
-})
-```
-
 ## Practical Runtime API
 
 `TransferGraph` gives a straightforward app-facing API:
@@ -689,19 +536,33 @@ const graph = new TransferGraph({
   })
   ```
 
-- `drawProgressBar`
+## Canvas Drawing Hooks
 
-  Customize the progress-bar canvas path and paint behavior.
+The renderer also exposes optional hooks for custom canvas drawing. If you do not provide any of them, the default implementation keeps the current visual behavior.
+
+Pass these through `new TransferGraph({ ... })` or `controller.setRendererOptions({ ... })`:
+
+### Common argument properties
+
+Every draw hook receives these shared properties:
+
+- `canvasCtx`: the active 2D canvas context for the current frame.
+- `canvasWidth`: the canvas width in pixels.
+- `canvasHeight`: the canvas height in pixels.
+
+- `drawProgressBar`
 
   Signature:
 
   ```js
-  drawProgressBar(drawArgs)
+  drawProgressBar({ canvasCtx, canvasWidth, canvasHeight, lastX, backgroundValue, createDefaultPath })
   ```
 
-  - `drawArgs`: the draw-specific argument object described above in the Canvas Drawing Hooks section.
+  - `lastX`: the resolved filled width of the progress bar in canvas coordinates.
+  - `backgroundValue`: the value used to compute the background fill width.
+  - `createDefaultPath()`: builds the current progress-bar path with `beginPath()` + `rect()`.
 
-  Example:
+  Default behavior: the renderer calls `createDefaultPath()`, then `fill()` and `stroke()`.
 
   ```js
   const graph = new TransferGraph({
@@ -715,17 +576,17 @@ const graph = new TransferGraph({
 
 - `drawGrid`
 
-  Customize the grid canvas path and stroke behavior.
-
   Signature:
 
   ```js
-  drawGrid(drawArgs)
+  drawGrid({ canvasCtx, canvasWidth, canvasHeight, gridCols, gridRows, createDefaultPath })
   ```
 
-  - `drawArgs`: the draw-specific argument object described above in the Canvas Drawing Hooks section.
+  - `gridCols`: number of vertical grid divisions.
+  - `gridRows`: number of horizontal grid divisions.
+  - `createDefaultPath()`: builds the current grid paths for both directions.
 
-  Example:
+  Default behavior: the renderer calls `createDefaultPath()`, then `stroke()`.
 
   ```js
   const graph = new TransferGraph({
@@ -738,17 +599,21 @@ const graph = new TransferGraph({
 
 - `drawSpeedOverlay`
 
-  Customize the speed overlay canvas path and fill behavior.
-
   Signature:
 
   ```js
-  drawSpeedOverlay(drawArgs)
+  drawSpeedOverlay({ canvasCtx, canvasWidth, canvasHeight, lastX, endX, avgWithSpeeds, renderPointCount, pixelsPerValue, maxAvgSpeed, createDefaultPath })
   ```
 
-  - `drawArgs`: the draw-specific argument object described above in the Canvas Drawing Hooks section.
+  - `lastX`: the resolved filled width of the progress area.
+  - `endX`: the right edge where the overlay path should continue until the filled progress ends.
+  - `avgWithSpeeds`: the calculated speed points used to draw the overlay.
+  - `renderPointCount`: number of points used when rendering the visible speed curve.
+  - `pixelsPerValue`: the conversion factor from value units to canvas X pixels.
+  - `maxAvgSpeed`: the resolved speed scale used to normalize the overlay height.
+  - `createDefaultPath()`: builds the current speed-area path and returns the resolved point position via the internal path logic.
 
-  Example:
+  Default behavior: the renderer calls `createDefaultPath()`, then `fill()`.
 
   ```js
   const graph = new TransferGraph({
@@ -761,17 +626,29 @@ const graph = new TransferGraph({
 
 - `drawSpeedLineLabel`
 
-  Customize the guide line, label background, and label text paint.
-
   Signature:
 
   ```js
-  drawSpeedLineLabel(drawArgs)
+  drawSpeedLineLabel({ canvasCtx, canvasWidth, canvasHeight, guideY, textX, labelBottomY, labelTopY, labelLeftX, labelWidth, labelPaddingX, labelPaddingY, speedLabel, speedLabelColor, speedLabelBackgroundColor, speedGuideColor, createDefaultLinePath, createDefaultLabelBackgroundPath, fillDefaultLabelText })
   ```
 
-  - `drawArgs`: the draw-specific argument object described above in the Canvas Drawing Hooks section.
+  - `guideY`: the Y position of the horizontal guide line.
+  - `textX`: the right-aligned X position used for the label text.
+  - `labelBottomY`: the baseline Y position for the label text.
+  - `labelTopY`: the top Y position of the background box.
+  - `labelLeftX`: the left X position of the background box.
+  - `labelWidth`: measured width of the label text.
+  - `labelPaddingX`: horizontal padding used by the default label box.
+  - `labelPaddingY`: vertical padding used by the default label box.
+  - `speedLabel`: the formatted label string.
+  - `speedLabelColor`: the current text color.
+  - `speedLabelBackgroundColor`: the current background fill color.
+  - `speedGuideColor`: the current guide-line stroke color.
+  - `createDefaultLinePath()`: builds the current guide-line path.
+  - `createDefaultLabelBackgroundPath()`: builds the current label background path with `beginPath()` + `rect()`.
+  - `fillDefaultLabelText(options)`: draws the current text using `fillText()`. You can override the fill style or text alignment through `options`.
 
-  Example:
+  Default behavior: the renderer calls the default line path, strokes it, calls the default background path, fills it, and then calls `fillDefaultLabelText()`.
 
   ```js
   const graph = new TransferGraph({
@@ -792,17 +669,16 @@ const graph = new TransferGraph({
 
 - `drawBorder`
 
-  Customize the canvas border path and stroke behavior.
-
   Signature:
 
   ```js
-  drawBorder(drawArgs)
+  drawBorder({ canvasCtx, canvasWidth, canvasHeight, borderColor, createDefaultPath })
   ```
 
-  - `drawArgs`: the draw-specific argument object described above in the Canvas Drawing Hooks section.
+  - `borderColor`: the current border stroke color.
+  - `createDefaultPath()`: builds the current canvas border path with `beginPath()` + `rect()`.
 
-  Example:
+  Default behavior: the renderer calls `createDefaultPath()`, then `stroke()`.
 
   ```js
   const graph = new TransferGraph({
@@ -812,6 +688,7 @@ const graph = new TransferGraph({
   },
   })
   ```
+
 
 ## Development
 
