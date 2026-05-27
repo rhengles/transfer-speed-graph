@@ -25,6 +25,14 @@ A lightweight, modular transfer-speed graph inspired by the Windows 8 file trans
 npm install @arijs/transfer-speed-graph
 ```
 
+Then use the object:
+
+```js
+import { TransferGraph } from '@arijs/transfer-speed-graph'
+
+const graph = new TransferGraph()
+```
+
 ### CDN
 
 If you prefer not to use a bundler, you can use either ES module imports or the UMD bundle.
