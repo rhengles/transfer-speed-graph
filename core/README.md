@@ -394,386 +394,386 @@ const graph = new TransferGraph({
 })
 ```
 
-### Practical Runtime API
+## Practical Runtime API
 
 `TransferGraph` gives a straightforward app-facing API:
 
-#### `startTransfer`
+- `startTransfer`
 
-Start a new transfer and reset the runtime state.
+  Start a new transfer and reset the runtime state.
 
-Signature:
+  Signature:
 
-```js
-startTransfer(config)
-```
+  ```js
+  startTransfer(config)
+  ```
 
-- `config.totalSize`: required positive total size for the transfer.
-- `config.nowMs`: optional timestamp used as the transfer start time.
+  - `config.totalSize`: required positive total size for the transfer.
+  - `config.nowMs`: optional timestamp used as the transfer start time.
 
-Example:
+  Example:
 
-```js
-const graph = new TransferGraph()
-graph.startTransfer({ totalSize: 12 * 1024 * 1024 })
-```
+  ```js
+  const graph = new TransferGraph()
+  graph.startTransfer({ totalSize: 12 * 1024 * 1024 })
+  ```
 
-#### `pushProgress`
+- `pushProgress`
 
-Append a new progress update to the active transfer.
+  Append a new progress update to the active transfer.
 
-Signature:
+  Signature:
 
-```js
-pushProgress(update)
-```
+  ```js
+  pushProgress(update)
+  ```
 
-- `update.transferredBytes`: current transferred byte count.
-- `update.totalSize`: optional total size override.
-- `update.elapsedMs`: optional elapsed time override.
-- `update.nowMs`: optional timestamp used to resolve elapsed time.
+  - `update.transferredBytes`: current transferred byte count.
+  - `update.totalSize`: optional total size override.
+  - `update.elapsedMs`: optional elapsed time override.
+  - `update.nowMs`: optional timestamp used to resolve elapsed time.
 
-Example:
+  Example:
 
-```js
-const graph = new TransferGraph()
-graph.pushProgress({ transferredBytes: 4 * 1024 * 1024 })
-```
+  ```js
+  const graph = new TransferGraph()
+  graph.pushProgress({ transferredBytes: 4 * 1024 * 1024 })
+  ```
 
-#### `finishTransfer`
+- `finishTransfer`
 
-Mark the transfer as finished and capture the final point.
+  Mark the transfer as finished and capture the final point.
 
-Signature:
+  Signature:
 
-```js
-finishTransfer(update)
-```
+  ```js
+  finishTransfer(update)
+  ```
 
-- `update.transferredBytes`: final transferred byte count.
-- `update.totalSize`: optional total size override.
-- `update.elapsedMs`: optional elapsed time override.
-- `update.nowMs`: optional timestamp used to resolve elapsed time.
+  - `update.transferredBytes`: final transferred byte count.
+  - `update.totalSize`: optional total size override.
+  - `update.elapsedMs`: optional elapsed time override.
+  - `update.nowMs`: optional timestamp used to resolve elapsed time.
 
-Example:
+  Example:
 
-```js
-const graph = new TransferGraph()
-graph.finishTransfer({ transferredBytes: 12 * 1024 * 1024 })
-```
+  ```js
+  const graph = new TransferGraph()
+  graph.finishTransfer({ transferredBytes: 12 * 1024 * 1024 })
+  ```
 
-#### `cancel`
+- `cancel`
 
-Cancel the active transfer and freeze it in a finished state.
+  Cancel the active transfer and freeze it in a finished state.
 
-Signature:
+  Signature:
 
-```js
-cancel()
-```
+  ```js
+  cancel()
+  ```
 
-Example:
+  Example:
 
-```js
-const graph = new TransferGraph()
-graph.cancel()
-```
+  ```js
+  const graph = new TransferGraph()
+  graph.cancel()
+  ```
 
-#### `reset`
+- `reset`
 
-Reset the model back to its initial state.
+  Reset the model back to its initial state.
 
-Signature:
+  Signature:
 
-```js
-reset()
-```
+  ```js
+  reset()
+  ```
 
-Example:
+  Example:
 
-```js
-const graph = new TransferGraph()
-graph.reset()
-```
+  ```js
+  const graph = new TransferGraph()
+  graph.reset()
+  ```
 
-#### `pause`
+- `pause`
 
-Pause elapsed-time tracking without clearing transfer progress.
+  Pause elapsed-time tracking without clearing transfer progress.
 
-Signature:
+  Signature:
 
-```js
-pause(nowMs)
-```
+  ```js
+  pause(nowMs)
+  ```
 
-- `nowMs`: optional timestamp used to freeze elapsed-time calculations.
+  - `nowMs`: optional timestamp used to freeze elapsed-time calculations.
 
-Example:
+  Example:
 
-```js
-const graph = new TransferGraph()
-graph.pause()
-```
+  ```js
+  const graph = new TransferGraph()
+  graph.pause()
+  ```
 
-#### `resume`
+- `resume`
 
-Resume elapsed-time tracking after a pause.
+  Resume elapsed-time tracking after a pause.
 
-Signature:
+  Signature:
 
-```js
-resume(nowMs)
-```
+  ```js
+  resume(nowMs)
+  ```
 
-- `nowMs`: optional timestamp used to resume elapsed-time calculations.
+  - `nowMs`: optional timestamp used to resume elapsed-time calculations.
 
-Example:
+  Example:
 
-```js
-const graph = new TransferGraph()
-graph.resume()
-```
+  ```js
+  const graph = new TransferGraph()
+  graph.resume()
+  ```
 
-#### `toggleFinishedPauseVisual`
+- `toggleFinishedPauseVisual`
 
-Toggle the paused visual state that is shown after a transfer finishes.
+  Toggle the paused visual state that is shown after a transfer finishes.
 
-Signature:
+  Signature:
 
-```js
-toggleFinishedPauseVisual()
-```
+  ```js
+  toggleFinishedPauseVisual()
+  ```
 
-Example:
+  Example:
 
-```js
-const graph = new TransferGraph()
-graph.toggleFinishedPauseVisual()
-```
+  ```js
+  const graph = new TransferGraph()
+  graph.toggleFinishedPauseVisual()
+  ```
 
-#### `refreshGraphScale`
+- `refreshGraphScale`
 
-Force the renderer to recalculate the speed scale on the next frame.
+  Force the renderer to recalculate the speed scale on the next frame.
 
-Signature:
+  Signature:
 
-```js
-refreshGraphScale()
-```
+  ```js
+  refreshGraphScale()
+  ```
 
-Example:
+  Example:
 
-```js
-const graph = new TransferGraph()
-graph.refreshGraphScale()
-```
+  ```js
+  const graph = new TransferGraph()
+  graph.refreshGraphScale()
+  ```
 
-#### `setPixelAverageWindow`
+- `setPixelAverageWindow`
 
-Change the rolling average window used by the renderer.
+  Change the rolling average window used by the renderer.
 
-Signature:
+  Signature:
 
-```js
-setPixelAverageWindow(nextWindow)
-```
+  ```js
+  setPixelAverageWindow(nextWindow)
+  ```
 
-- `nextWindow`: smoothing window size in rendered points.
+  - `nextWindow`: smoothing window size in rendered points.
 
-Example:
+  Example:
 
-```js
-const graph = new TransferGraph()
-graph.setPixelAverageWindow(16)
-```
+  ```js
+  const graph = new TransferGraph()
+  graph.setPixelAverageWindow(16)
+  ```
 
-#### `setMaxSpeedDecay`
+- `setMaxSpeedDecay`
 
-Change the decay factor used for the dynamic speed scale.
+  Change the decay factor used for the dynamic speed scale.
 
-Signature:
+  Signature:
 
-```js
-setMaxSpeedDecay(nextValue)
-```
+  ```js
+  setMaxSpeedDecay(nextValue)
+  ```
 
-- `nextValue`: new decay value, typically between `0.5` and `0.999`.
+  - `nextValue`: new decay value, typically between `0.5` and `0.999`.
 
-Example:
+  Example:
 
-```js
-const graph = new TransferGraph()
-graph.setMaxSpeedDecay(0.95)
-```
+  ```js
+  const graph = new TransferGraph()
+  graph.setMaxSpeedDecay(0.95)
+  ```
 
-#### `setMaxSpeedHeadroom`
+- `setMaxSpeedHeadroom`
 
-Change the headroom factor used for the dynamic speed scale.
+  Change the headroom factor used for the dynamic speed scale.
 
-Signature:
+  Signature:
 
-```js
-setMaxSpeedHeadroom(nextValue)
-```
+  ```js
+  setMaxSpeedHeadroom(nextValue)
+  ```
 
-- `nextValue`: new headroom value, typically between `1` and `2`.
+  - `nextValue`: new headroom value, typically between `1` and `2`.
 
-Example:
+  Example:
 
-```js
-const graph = new TransferGraph()
-graph.setMaxSpeedHeadroom(1.08)
-```
+  ```js
+  const graph = new TransferGraph()
+  graph.setMaxSpeedHeadroom(1.08)
+  ```
 
-#### `setOnFrame`
+- `setOnFrame`
 
-Register a callback that receives the computed frame view model.
+  Register a callback that receives the computed frame view model.
 
-Signature:
+  Signature:
 
-```js
-setOnFrame(onFrame)
-```
+  ```js
+  setOnFrame(onFrame)
+  ```
 
-- `onFrame(view)`: receives the computed frame view model.
+  - `onFrame(view)`: receives the computed frame view model.
 
-Example:
+  Example:
 
-```js
-const graph = new TransferGraph()
-graph.setOnFrame((view) => {
+  ```js
+  const graph = new TransferGraph()
+  graph.setOnFrame((view) => {
   console.log(view.progressInt)
-})
-```
+  })
+  ```
 
-#### `setOnControls`
+- `setOnControls`
 
-Register a callback that receives the current controls state.
+  Register a callback that receives the current controls state.
 
-Signature:
+  Signature:
 
-```js
-setOnControls(onControls)
-```
+  ```js
+  setOnControls(onControls)
+  ```
 
-- `onControls(view)`: receives the current controls state.
+  - `onControls(view)`: receives the current controls state.
 
-Example:
+  Example:
 
-```js
-const graph = new TransferGraph()
-graph.setOnControls((controls) => {
+  ```js
+  const graph = new TransferGraph()
+  graph.setOnControls((controls) => {
   console.log(controls.pixelAverageWindow)
-})
-```
+  })
+  ```
 
-#### `setOnStateChange`
+- `setOnStateChange`
 
-Register a callback that receives the raw state snapshot.
+  Register a callback that receives the raw state snapshot.
 
-Signature:
+  Signature:
 
-```js
-setOnStateChange(onStateChange)
-```
+  ```js
+  setOnStateChange(onStateChange)
+  ```
 
-- `onStateChange(state)`: receives the raw state snapshot.
+  - `onStateChange(state)`: receives the raw state snapshot.
 
-Example:
+  Example:
 
-```js
-const graph = new TransferGraph()
-graph.setOnStateChange((state) => {
+  ```js
+  const graph = new TransferGraph()
+  graph.setOnStateChange((state) => {
   console.log(state.started, state.finished)
-})
-```
+  })
+  ```
 
-#### `drawProgressBar`
+- `drawProgressBar`
 
-Customize the progress-bar canvas path and paint behavior.
+  Customize the progress-bar canvas path and paint behavior.
 
-Signature:
+  Signature:
 
-```js
-drawProgressBar(drawArgs)
-```
+  ```js
+  drawProgressBar(drawArgs)
+  ```
 
-- `drawArgs`: the draw-specific argument object described above in the Canvas Drawing Hooks section.
+  - `drawArgs`: the draw-specific argument object described above in the Canvas Drawing Hooks section.
 
-Example:
+  Example:
 
-```js
-const graph = new TransferGraph({
+  ```js
+  const graph = new TransferGraph({
   drawProgressBar({ canvasCtx, createDefaultPath }) {
     createDefaultPath()
     canvasCtx.fill()
     canvasCtx.stroke()
   },
-})
-```
+  })
+  ```
 
-#### `drawGrid`
+- `drawGrid`
 
-Customize the grid canvas path and stroke behavior.
+  Customize the grid canvas path and stroke behavior.
 
-Signature:
+  Signature:
 
-```js
-drawGrid(drawArgs)
-```
+  ```js
+  drawGrid(drawArgs)
+  ```
 
-- `drawArgs`: the draw-specific argument object described above in the Canvas Drawing Hooks section.
+  - `drawArgs`: the draw-specific argument object described above in the Canvas Drawing Hooks section.
 
-Example:
+  Example:
 
-```js
-const graph = new TransferGraph({
+  ```js
+  const graph = new TransferGraph({
   drawGrid({ canvasCtx, createDefaultPath }) {
     createDefaultPath()
     canvasCtx.stroke()
   },
-})
-```
+  })
+  ```
 
-#### `drawSpeedOverlay`
+- `drawSpeedOverlay`
 
-Customize the speed overlay canvas path and fill behavior.
+  Customize the speed overlay canvas path and fill behavior.
 
-Signature:
+  Signature:
 
-```js
-drawSpeedOverlay(drawArgs)
-```
+  ```js
+  drawSpeedOverlay(drawArgs)
+  ```
 
-- `drawArgs`: the draw-specific argument object described above in the Canvas Drawing Hooks section.
+  - `drawArgs`: the draw-specific argument object described above in the Canvas Drawing Hooks section.
 
-Example:
+  Example:
 
-```js
-const graph = new TransferGraph({
+  ```js
+  const graph = new TransferGraph({
   drawSpeedOverlay({ canvasCtx, createDefaultPath }) {
     createDefaultPath()
     canvasCtx.fill()
   },
-})
-```
+  })
+  ```
 
-#### `drawSpeedLineLabel`
+- `drawSpeedLineLabel`
 
-Customize the guide line, label background, and label text paint.
+  Customize the guide line, label background, and label text paint.
 
-Signature:
+  Signature:
 
-```js
-drawSpeedLineLabel(drawArgs)
-```
+  ```js
+  drawSpeedLineLabel(drawArgs)
+  ```
 
-- `drawArgs`: the draw-specific argument object described above in the Canvas Drawing Hooks section.
+  - `drawArgs`: the draw-specific argument object described above in the Canvas Drawing Hooks section.
 
-Example:
+  Example:
 
-```js
-const graph = new TransferGraph({
+  ```js
+  const graph = new TransferGraph({
   drawSpeedLineLabel({
     canvasCtx,
     createDefaultLinePath,
@@ -786,31 +786,31 @@ const graph = new TransferGraph({
     canvasCtx.fill()
     fillDefaultLabelText()
   },
-})
-```
+  })
+  ```
 
-#### `drawBorder`
+- `drawBorder`
 
-Customize the canvas border path and stroke behavior.
+  Customize the canvas border path and stroke behavior.
 
-Signature:
+  Signature:
 
-```js
-drawBorder(drawArgs)
-```
+  ```js
+  drawBorder(drawArgs)
+  ```
 
-- `drawArgs`: the draw-specific argument object described above in the Canvas Drawing Hooks section.
+  - `drawArgs`: the draw-specific argument object described above in the Canvas Drawing Hooks section.
 
-Example:
+  Example:
 
-```js
-const graph = new TransferGraph({
+  ```js
+  const graph = new TransferGraph({
   drawBorder({ canvasCtx, createDefaultPath }) {
     createDefaultPath()
     canvasCtx.stroke()
   },
-})
-```
+  })
+  ```
 
 ## Development
 
