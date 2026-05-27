@@ -26,47 +26,54 @@ npm install @arijs/transfer-speed-graph
 
 ### CDN
 
-If you prefer not to use a bundler, you can import the package directly from a CDN in an ES module script:
+If you prefer not to use a bundler, you can use either ES module imports or the UMD bundle.
+
+ES module import via jsDelivr:
 
 ```js
 import { TransferGraph } from 'https://cdn.jsdelivr.net/npm/@arijs/transfer-speed-graph@latest/+esm'
+
+const graph = new TransferGraph()
 ```
 
-You can also use unpkg:
+ES module import via unpkg:
 
 ```js
 import { TransferGraph } from 'https://unpkg.com/@arijs/transfer-speed-graph@latest?module'
+
+const graph = new TransferGraph()
+```
+
+UMD script via jsDelivr:
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/@arijs/transfer-speed-graph@latest/dist/arijs-transfer-speed-graph.umd.js"></script>
+```
+
+UMD script via unpkg:
+
+```html
+<script src="https://unpkg.com/@arijs/transfer-speed-graph@latest/dist/arijs-transfer-speed-graph.umd.js"></script>
 ```
 
 ### HTML Script Tag
 
-If you want to use the UMD bundle in a plain HTML page, load it with a normal script tag and read `TransferGraph` from `window`:
+After loading one of the CDN scripts above, you can initialize the graph with a minimal HTML snippet:
 
 ```html
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Transfer Graph</title>
-    <script src="https://cdn.jsdelivr.net/npm/@arijs/transfer-speed-graph@latest/dist/arijs-transfer-speed-graph.umd.js"></script>
-  </head>
-  <body>
-    <canvas id="graph" width="416" height="72"></canvas>
-    <script>
-      const graph = new TransferSpeedGraph.TransferGraph()
-      const canvasCtx = document.getElementById('graph').getContext('2d')
+<canvas id="graph" width="416" height="72"></canvas>
+<script>
+  const graph = new TransferSpeedGraph.TransferGraph()
+  const canvasCtx = document.getElementById('graph').getContext('2d')
 
-      graph.setRendererOptions({
-        canvasCtx,
-        canvasWidth: 416,
-        canvasHeight: 72,
-      })
+  graph.setRendererOptions({
+    canvasCtx,
+    canvasWidth: 416,
+    canvasHeight: 72,
+  })
 
-      graph.startTransfer({ totalSize: 12 * 1024 * 1024 })
-    </script>
-  </body>
-</html>
+  graph.startTransfer({ totalSize: 12 * 1024 * 1024 })
+</script>
 ```
 
 ### Download Example
