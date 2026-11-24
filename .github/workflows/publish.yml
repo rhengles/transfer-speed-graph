@@ -1,0 +1,68 @@
+# Publishes core/ to npm (@arijs/transfer-speed-graph) when a version tag is pushed.
+#
+# Uses npm Trusted Publishing (OIDC): no npm token is stored in GitHub. On npmjs.com,
+# the package settings must list this repository and this workflow file
+# (publish.yml) as a trusted publisher. The package gets a provenance attestation.
+#
+# Release: bump "version" in core/package.json, commit, then
+#   git tag v0.1.4 && git push origin v0.1.4
+name: Publish to npm
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  id-token: write # OIDC token for npm Trusted Publishing
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      # Trusted Publishing needs npm 11.5.1 or later.
+      - name: Update npm
+        run: npm install -g npm@^11.5.1 && npm --version
+
+      - name: Check that the tag matches core/package.json
+        run: |
+          version=$(node -p "require('./core/package.json').version")
+          if [ "${GITHUB_REF_NAME}" != "v${version}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match core/package.json version ${version} (expected v${version})"
+            exit 1
+          fi
+          if npm view "@arijs/transfer-speed-graph@${version}" version >/dev/null 2>&1; then
+            echo "::error::@arijs/transfer-speed-graph@${version} is already published"
+            exit 1
+          fi
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - run: npm test
+
+      - name: Check the packed tarball (require/import)
+        run: npm run test:package
+
+      - name: Publish
+        working-directory: core
+        run: |
+          version=$(node -p "require('./package.json').version")
+          case "$version" in
+            *-*) dist_tag=next ;;   # pre-release, e.g. 0.2.0-beta.1
+            *)   dist_tag=latest ;;
+          esac
+          npm publish --access public --tag "$dist_tag"

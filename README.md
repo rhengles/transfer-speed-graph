@@ -802,6 +802,21 @@ npm run test:package
 
 Open the demo UI by loading [index.html](index.html) in a browser.
 
+### Releasing
+
+Publishing to npm is done by [.github/workflows/publish.yml](.github/workflows/publish.yml) with npm Trusted Publishing (no npm token in GitHub):
+
+1. Bump `version` in `core/package.json` and commit it to `master`.
+2. Tag that commit with the same version and push the tag:
+
+   ```bash
+   git tag v0.1.4 && git push origin v0.1.4
+   ```
+
+The workflow checks that the tag matches `core/package.json` and that the version is not published yet, runs `npm ci`, `npm run build`, `npm test` and `npm run test:package`, then runs `npm publish` from `core/` with a provenance attestation. Versions with a pre-release suffix (`0.2.0-beta.1`) go to the `next` dist-tag, the others to `latest`.
+
+One-time setup on npmjs.com: in the package settings of `@arijs/transfer-speed-graph`, add a trusted publisher of type GitHub Actions with repository `rhengles/transfer-speed-graph` and workflow `publish.yml`.
+
 ## License
 
 [MIT](LICENSE) © 2026 Rafael Hengles
