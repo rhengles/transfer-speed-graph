@@ -33,6 +33,12 @@ import { TransferGraph } from '@arijs/transfer-speed-graph'
 const graph = new TransferGraph()
 ```
 
+CommonJS (`require`) works too:
+
+```js
+const { TransferGraph } = require('@arijs/transfer-speed-graph')
+```
+
 ### CDN
 
 If you prefer not to use a bundler, you can use either ES module imports or the UMD bundle.
@@ -65,6 +71,16 @@ UMD script via unpkg:
 <script src="https://unpkg.com/@arijs/transfer-speed-graph@latest/dist/arijs-transfer-speed-graph.umd.js"></script>
 ```
 
+### Package files
+
+| File | Format | Used by |
+| --- | --- | --- |
+| `dist/arijs-transfer-speed-graph.js` | ES module | `import` (Node, bundlers), jsDelivr `/+esm`, unpkg `?module` |
+| `dist/arijs-transfer-speed-graph.umd.cjs` | UMD | `require()` in Node. It is `.cjs` because the package is `"type": "module"`, so Node would read a `.js` file as ESM |
+| `dist/arijs-transfer-speed-graph.umd.js` | UMD, same content as `.umd.cjs` | `<script>` tags and the CDN links above. Defines the global `TransferSpeedGraph` |
+
+`package.json` maps `import` to the ES module and `require` to the `.umd.cjs` bundle. The bundles are built for Chrome 109, Edge 109, Firefox 115 and Safari 16, so they still run on Windows 7.
+
 ### HTML Script Tag
 
 After loading one of the CDN scripts above, you can initialize the graph with a minimal HTML snippet:
@@ -84,6 +100,8 @@ After loading one of the CDN scripts above, you can initialize the graph with a 
   graph.startTransfer({ totalSize: 12 * 1024 * 1024 })
 </script>
 ```
+
+On high-density screens the library sizes the canvas for you, so the graph stays sharp; see [`pixelRatio`](#high-density-screens-pixelratio).
 
 ### Download Example
 
@@ -232,6 +250,7 @@ Graph behavior can be tuned at runtime with controls such as:
 - `maxSpeedDecay`
 - `maxSpeedHeadroom`
 - `ignoreTrailingSpeedSample`
+- `minSampleIntervalMs`
 
 Fake simulation is configurable through `simulationOptions`, including:
 
@@ -241,6 +260,58 @@ Fake simulation is configurable through `simulationOptions`, including:
 - `deterministicSeed`
 
 This allows both realistic noisy profiles and stable deterministic test profiles.
+
+## Options
+
+`new TransferGraph(options)` accepts both renderer and model options (their keys do not overlap). You can change them later with `setRendererOptions(options)` and `setModelOptions(options)`; keys you leave out keep their current value.
+
+### Renderer options (`setRendererOptions`)
+
+- `canvasCtx`: the `CanvasRenderingContext2D` to draw on.
+- `canvasWidth`, `canvasHeight`: graph size in CSS pixels (default `416` × `72`).
+- `pixelRatio`: device pixels per CSS pixel, for sharp drawing on high-density screens. See below.
+- `formatSpeed(bytesPerSecond)`: formats the speed label.
+- `pausedRenderOptions`, `cancelledRenderOptions`: colours used in those states.
+- Draw hooks: see [Canvas Drawing Hooks](#canvas-drawing-hooks).
+
+#### High-density screens (`pixelRatio`)
+
+When `devicePixelRatio` is above 1 (high-DPI monitors, phones, Windows display scaling at 125 % or 150 %, browser zoom), a canvas whose pixel size equals its CSS size gets stretched and looks blurry. The library handles this for you:
+
+- `canvasWidth` and `canvasHeight` stay in CSS pixels.
+- Before each frame it sets `canvas.width = round(canvasWidth × pixelRatio)` and `canvas.height` the same way (only when the value changes, because assigning them clears the canvas). It also fixes the CSS size with `canvas.style.width` / `canvas.style.height` when the canvas has `style`, and draws with `setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0)`. The context transform is restored after the frame.
+
+Values:
+
+- Not set, `'auto'` or `null` (default): for a `<canvas>` element, uses `globalThis.devicePixelRatio || 1`, read again at every frame, so it follows zoom changes and a window moved to another monitor. Outside the DOM (node-canvas, `OffscreenCanvas`) the ratio is `1` and the canvas is left untouched, as in 0.1.3.
+- A number greater than 0: always applied, on any canvas.
+- `false` (or `0`): the library never touches the canvas size, CSS size or transform.
+
+Scale the canvas **either** with this option **or** by hand, not both. If you already scale by hand (bigger `canvas.width` plus `ctx.scale(dpr, dpr)`), pass `pixelRatio: false` or remove your code. If you forget, the scale is still not doubled: in automatic mode the library leaves the canvas alone when the context already has a transform, and an explicit `pixelRatio` uses `setTransform`, which replaces the transform instead of multiplying it. One case cannot be detected: `canvasWidth` / `canvasHeight` given in device pixels. Always pass CSS pixels.
+
+```js
+graph.setRendererOptions({ canvasCtx, canvasWidth: 416, canvasHeight: 72 }) // automatic
+graph.setRendererOptions({ pixelRatio: 2 })     // fixed ratio
+graph.setRendererOptions({ pixelRatio: false }) // I scale the canvas myself
+```
+
+### Model options (`setModelOptions`)
+
+- `now`: function that returns the current time in milliseconds (default `Date.now`). Every clock read goes through it: `startTransfer`, `pushProgress`, `finishTransfer`, `pause`, `resume`, and the elapsed and remaining times in the frame view. Use it for deterministic tests:
+
+  ```js
+  let t = 0
+  const graph = new TransferGraph({ canvasCtx, now: () => t })
+  graph.startTransfer({ totalSize: 1000 })
+  t += 500
+  graph.pushProgress({ transferredBytes: 250 }) // 250 bytes after 500 ms
+  graph.setModelOptions({ now: () => performance.now() }) // can be swapped at any time
+  ```
+
+  It replaces assigning `graph.model.now` by hand (which still works). Explicit `nowMs` / `elapsedMs` arguments still take precedence over the clock.
+- `minSampleIntervalMs` (default `50`): progress updates that arrive less than this many milliseconds after the previous point do not become speed samples, because a few bytes in 1 ms read as a huge speed and flatten the rest of the curve. They still update the displayed progress, and the next update far enough apart replaces them. The final update (`finishTransfer`, or reaching `totalSize`) is always kept. `0` keeps every update (the 0.1.3 behaviour).
+- `pixelAverageWindow`, `maxSpeedDecay`, `maxSpeedHeadroom`, `ignoreTrailingSpeedSample`: see [High Configurability](#high-configurability).
+- `totalSize`: total size restored by `reset()`.
 
 ## Practical Runtime API
 
@@ -257,7 +328,8 @@ This allows both realistic noisy profiles and stable deterministic test profiles
   ```
 
   - `config.totalSize`: required positive total size for the transfer.
-  - `config.nowMs`: optional timestamp used as the transfer start time.
+  - `config.transferredBytes`: optional bytes already transferred, when the screen opens in the middle of a transfer. Progress and graph start from there.
+  - `config.nowMs`: optional timestamp of when the transfer really started, on the same clock as the `now` option (`Date.now()` by default). Defaults to now.
 
   Example:
 
@@ -265,6 +337,18 @@ This allows both realistic noisy profiles and stable deterministic test profiles
   const graph = new TransferGraph()
   graph.startTransfer({ totalSize: 12 * 1024 * 1024 })
   ```
+
+  Opening the graph in the middle of a transfer: pass `transferredBytes` and `nowMs`. The first segment of the curve is then the average speed since `nowMs`. Without them, all the bytes already done would arrive with the first `pushProgress`, a few milliseconds after `startTransfer`, and show up as a speed spike that takes over the Y scale and flattens the rest of the curve.
+
+  ```js
+  graph.startTransfer({
+    totalSize: job.totalBytes,
+    transferredBytes: job.doneBytes, // e.g. 40 % already done
+    nowMs: job.startedAt,            // Date.now() value of when the transfer started
+  })
+  ```
+
+  If you pass `transferredBytes` without `nowMs`, the time already spent is unknown. The part already done is drawn at the speed measured between the first updates, and the remaining-time estimate uses that speed; `view.elapsedMs` counts from `startTransfer`.
 
 - `pushProgress`
 
@@ -698,10 +782,41 @@ Install dependencies:
 npm install
 ```
 
-Run tests / snapshot checks:
+Build the bundles in `core/dist`:
+
+```bash
+npm run build
+```
+
+Run tests / snapshot checks (`simpler-test.js` regenerates the snapshots, `core-test.js` checks the `TransferGraph` API):
 
 ```bash
 npm test
 ```
 
+Check the npm package (packs `core/`, installs the tarball in a temporary folder, then loads it with `require` and `import`; run it after the build):
+
+```bash
+npm run test:package
+```
+
 Open the demo UI by loading [index.html](index.html) in a browser.
+
+### Releasing
+
+Publishing to npm is done by [.github/workflows/publish.yml](.github/workflows/publish.yml) with npm Trusted Publishing (no npm token in GitHub):
+
+1. Bump `version` in `core/package.json` and commit it to `master`.
+2. Tag that commit with the same version and push the tag:
+
+   ```bash
+   git tag v0.1.4 && git push origin v0.1.4
+   ```
+
+The workflow checks that the tag matches `core/package.json` and that the version is not published yet, runs `npm ci`, `npm run build`, `npm test` and `npm run test:package`, then runs `npm publish` from `core/` with a provenance attestation. Versions with a pre-release suffix (`0.2.0-beta.1`) go to the `next` dist-tag, the others to `latest`.
+
+One-time setup on npmjs.com: in the package settings of `@arijs/transfer-speed-graph`, add a trusted publisher of type GitHub Actions with repository `rhengles/transfer-speed-graph` and workflow `publish.yml`.
+
+## License
+
+[MIT](LICENSE) © 2026 Rafael Hengles

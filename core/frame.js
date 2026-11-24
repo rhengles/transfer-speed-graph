@@ -302,13 +302,15 @@ function renderStepToCanvas(maxValue, stepList, canvasCtx, { w: canvasWidth, h: 
 	})
 	canvasCtx.restore()
 
-	if (lastX) {
-		const avgResult = calcAverageSpeedsForResolution(
+	// The series may still be empty of speed samples while the progress bar already
+	// shows bytes (backgroundValue); calcAverageSpeedsForResolution returns nothing then.
+	const avgResult = lastX ? calcAverageSpeedsForResolution(
 			maxValue,
 			stepList,
 			{ w: canvasWidth, h: canvasHeight },
 			Object.assign({}, renderOptions, { ignoreTrailingSpeedSample }),
-		)
+		) : undefined
+	if (avgResult) {
 		const {
 			avgWithSpeeds,
 			renderPointCount,
