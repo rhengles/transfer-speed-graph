@@ -3,7 +3,9 @@ import { TransferGraphRenderer } from './renderer.js'
 
 class TransferGraph {
   constructor(options) {
-    this.model = new TransferGraphModel
+    // Model options (now, minSampleIntervalMs, pixelAverageWindow, ...) and renderer
+    // options (canvasCtx, canvasWidth, pixelRatio, ...) use distinct keys.
+    this.model = new TransferGraphModel(options)
     this.renderer = new TransferGraphRenderer
 
     this.setRendererOptions(options)

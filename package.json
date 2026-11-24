@@ -7,7 +7,9 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "test": "node simpler-test.js",
+    "test": "node simpler-test.js && node --test core-test.js",
+    "test:core": "node --test core-test.js",
+    "test:package": "node test-utils/check-package.js",
     "v1-snapshot": "node project-v1/snapshot.js",
     "simpler": "node simpler-test.js"
   },
